@@ -2,20 +2,6 @@
 
 BrightPath is a full stack job portal built with React and Express. It supports job seekers, employers, and admins with job discovery, applications, resume submission, saved jobs, profile management, employer job posting, applicant review, and notifications.
 
-## Screenshots
-
-### Landing Page
-
-![BrightPath landing page](docs/screenshots/landing-page.png)
-
-### Login
-
-![BrightPath login page](docs/screenshots/login-page.png)
-
-### Create Account
-
-![BrightPath sign up page](docs/screenshots/signup-page.png)
-
 ## Tech Stack
 
 - Frontend: React 18, Vite, React Router, Axios, Tailwind CSS, Lucide React, Recharts
@@ -46,6 +32,86 @@ BrightPathLatest/
   .gitignore
   README.md
 ```
+
+## Application Walkthrough
+
+### Landing Page
+
+![BrightPath landing page](docs/screenshots/landing-page.png)
+
+The landing page introduces BrightPath with a clear brand, a focused message, and two direct actions: find jobs for candidates or post a job for employers. The page is designed to quickly explain the platform without making the visitor search for the next step.
+
+### Login
+
+![BrightPath login page](docs/screenshots/login-page.png)
+
+The login screen keeps the flow simple for returning users. It supports role-based entry into the right workspace after authentication.
+
+### Create Account
+
+![BrightPath sign up page](docs/screenshots/signup-page.png)
+
+The registration page lets a user choose between job seeker and employer accounts. Profile image upload is optional, while required fields are validated before account creation.
+
+### Job Seeker: Find Jobs
+
+![Job seeker find jobs screen](docs/screenshots/jobseeker-find-jobs.png)
+
+The job seeker workspace focuses on job discovery. Candidates can search by title, company, keyword, or location, apply filters, switch job list layout, save roles, and open job details from one place.
+
+### Job Seeker: Profile And Resume
+
+![Job seeker profile screen](docs/screenshots/jobseeker-profile.png)
+
+The profile area stores the candidate identity, resume, education, experience, skills, projects, and social links. The saved resume is used during the application flow so a candidate can apply faster without uploading the same file every time.
+
+### Employer: Dashboard
+
+![Employer dashboard screen](docs/screenshots/employer-dashboard.png)
+
+The employer dashboard gives a quick view of posted jobs, applications, active roles, and hiring activity. It is the main starting point for managing hiring work.
+
+### Employer: Post A Job
+
+![Employer post job screen](docs/screenshots/employer-post-job.png)
+
+The job posting screen is structured so employers can publish clear roles with title, category, location, salary, description, and requirements. Employer company details are checked before posting so jobs have the right public identity.
+
+### Employer: Manage Jobs
+
+![Employer manage jobs screen](docs/screenshots/employer-manage-jobs.png)
+
+The manage jobs page helps employers review their posted roles, track status, and open applicants for each job. It keeps job management separate from candidate review.
+
+### Employer: Company Profile
+
+![Employer company profile screen](docs/screenshots/employer-company-profile.png)
+
+The employer profile represents the company-facing identity used on job posts and applicant review. Employers can update company name, description, contact details, and profile image from this area.
+
+### Admin: Overview
+
+![Admin dashboard screen](docs/screenshots/admin-dashboard.png)
+
+The admin dashboard summarizes platform activity and gives the admin a central place to monitor users, jobs, and applications.
+
+### Admin: Users
+
+![Admin users screen](docs/screenshots/admin-users.png)
+
+The users page lets admins review registered accounts across job seekers, employers, and admins. Sensitive fields such as passwords are excluded from API responses.
+
+### Admin: Jobs
+
+![Admin jobs screen](docs/screenshots/admin-jobs.png)
+
+The admin jobs page provides oversight of posted jobs, including job status and employer-related information.
+
+### Admin: Applications
+
+![Admin applications screen](docs/screenshots/admin-applications.png)
+
+The admin applications page shows submitted applications and their current review state. Submitted resumes are treated as the main application record so employer and admin review uses the resume attached at apply time.
 
 ## Environment Setup
 
