@@ -45,6 +45,7 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
+// Vercel imports the Express app as a serverless function, while local and normal Node hosts run app.listen.
 if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) {
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }

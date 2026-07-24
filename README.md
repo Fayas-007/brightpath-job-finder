@@ -228,12 +228,68 @@ The project `.gitignore` already includes these patterns.
 
 ## Deployment Notes
 
-Recommended simple deployment:
+BrightPath can be deployed with either a normal Node backend host or Vercel serverless functions.
 
-- Deploy backend to Render, Railway, or a similar Node.js host.
-- Deploy frontend to Vercel or Netlify.
-- Set backend environment variables on the backend host.
-- Set `VITE_API_BASE_URL` on the frontend host to the deployed backend URL.
-- Update `FRONTEND_URL` on the backend host to the deployed frontend URL.
+### Backend On Vercel
 
-Important: local uploads are not permanent on many hosting platforms. For a real production deployment, move resume and image uploads to Cloudinary, AWS S3, or another persistent file storage service.
+The backend includes Vercel support through:
+
+```text
+backend/api/index.js
+backend/vercel.json
+```
+
+`backend/server.js` exports the Express app for Vercel. The server only calls `app.listen(...)` when it is running locally or on a normal Node host. Vercel sets the `VERCEL` environment variable, so Vercel can import the app without trying to start a separate long-running server.
+
+Use these backend project settings on Vercel:
+
+```text
+Root Directory: backend
+Framework Preset: Other
+Install Command: npm install
+Build Command: leave empty
+Output Directory: leave empty
+```
+
+Required backend environment variables:
+
+```env
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_long_random_jwt_secret
+PORT=8000
+FRONTEND_URL=https://your-frontend-url.vercel.app
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_gmail_app_password
+```
+
+### Frontend On Vercel
+
+Use these frontend project settings on Vercel:
+
+```text
+Root Directory: frontend/job-portal
+Framework Preset: Vite
+Install Command: npm install
+Build Command: npm run build
+Output Directory: dist
+```
+
+Required frontend environment variable:
+
+```env
+VITE_API_BASE_URL=https://your-backend-url.vercel.app
+```
+
+### Normal Node Hosts
+
+The same backend still works on Render, Railway, Koyeb, or another normal Node host. Those hosts do not set `VERCEL`, so `server.js` will run `app.listen(...)` normally.
+
+For normal Node hosts, use:
+
+```text
+Root Directory: backend
+Build Command: npm install
+Start Command: npm start
+```
+
+Important: local uploads are not permanent on many hosting platforms, and Vercel functions should not be used for persistent uploaded files. For a real production deployment, move resume and image uploads to Cloudinary, AWS S3, or another persistent file storage service.
