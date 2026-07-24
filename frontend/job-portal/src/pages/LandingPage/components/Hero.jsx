@@ -49,31 +49,13 @@ const Hero = () => {
             and move decisions forward.
           </p>
 
-          <div className="mt-8 grid max-w-2xl gap-2 rounded-lg border border-blue-100 bg-white/86 p-2 shadow-lg shadow-blue-100/50 backdrop-blur-md sm:grid-cols-[1fr_auto]">
-            <button
-              type="button"
-              onClick={() => navigate("/find-jobs")}
-              className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-blue-50"
-            >
-              <Search className="h-5 w-5 text-blue-600" />
-              Search job title, company, or location
-            </button>
-            <button
-              className="group inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm shadow-blue-100 transition-colors hover:bg-blue-700"
-              onClick={() => navigate("/find-jobs")}
-            >
-              Find Jobs
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </button>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button
               className="group inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-100 transition-all hover:bg-blue-700"
               onClick={() => navigate("/find-jobs")}
             >
               <Search className="h-5 w-5" />
-              Browse Roles
+              Find Jobs
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </button>
 
