@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
+const { uploadDir } = require("./utils/uploadPath");
 const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
@@ -39,7 +39,7 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(uploadDir));
 
 app.get("/", (req, res) => {
   res.send("Server is running...");

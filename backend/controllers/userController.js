@@ -1,15 +1,12 @@
 const fs = require("fs");
-const path = require("path");
 const User = require("../models/User");
 const Application = require("../models/Application");
-
-const uploadDir = path.resolve(__dirname, "../uploads");
+const { uploadDir, resolveUploadedPath } = require("../utils/uploadPath");
 
 const deleteUploadedFile = (fileUrl) => {
   if (!fileUrl) return;
 
-  const fileName = path.basename(fileUrl);
-  const filePath = path.resolve(uploadDir, fileName);
+  const filePath = resolveUploadedPath(fileUrl);
 
   if (!filePath.startsWith(uploadDir)) return;
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);

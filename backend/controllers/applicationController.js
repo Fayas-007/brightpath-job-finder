@@ -4,15 +4,14 @@ const Notification = require("../models/Notification");
 const sendEmail = require("../utils/sendEmail");
 const fs = require("fs");
 const path = require("path");
+const { uploadDir, resolveUploadedPath } = require("../utils/uploadPath");
 
 const VALID_STATUSES = ["Applied", "In Review", "Rejected", "Accepted"];
-const uploadDir = path.resolve(__dirname, "../uploads");
 
 const deleteUploadedFile = (fileUrl) => {
   if (!fileUrl) return;
 
-  const fileName = path.basename(fileUrl);
-  const filePath = path.resolve(uploadDir, fileName);
+  const filePath = resolveUploadedPath(fileUrl);
 
   if (!filePath.startsWith(uploadDir)) return;
   if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -345,7 +344,7 @@ exports.downloadApplicationResume = async (req, res) => {
     }
 
     const fileName = path.basename(app.resume);
-    const filePath = path.resolve(uploadDir, fileName);
+    const filePath = resolveUploadedPath(app.resume);
 
     if (!filePath.startsWith(uploadDir) || !fs.existsSync(filePath)) {
       return res.status(404).json({
