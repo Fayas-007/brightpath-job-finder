@@ -2,6 +2,20 @@
 
 BrightPath is a full stack job portal built with React and Express. It supports job seekers, employers, and admins with job discovery, applications, resume submission, saved jobs, profile management, employer job posting, applicant review, and notifications.
 
+## Screenshots
+
+### Landing Page
+
+![BrightPath landing page](docs/screenshots/landing-page.png)
+
+### Login
+
+![BrightPath login page](docs/screenshots/login-page.png)
+
+### Create Account
+
+![BrightPath sign up page](docs/screenshots/signup-page.png)
+
 ## Tech Stack
 
 - Frontend: React 18, Vite, React Router, Axios, Tailwind CSS, Lucide React, Recharts
