@@ -24,7 +24,9 @@ app.use(
   })
 );
 
-connectDB();
+connectDB().catch((err) => {
+  console.error("MongoDB startup failed:", err.message);
+});
 
 app.use(express.json());
 
