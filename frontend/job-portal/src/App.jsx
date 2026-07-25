@@ -32,7 +32,7 @@ const EmployerProfilePage = lazy(() => import("./pages/Employer/EmployerProfileP
 
 const AdminDashboard = lazy(() => import("./pages/Admin/AdminDashboard"));
 const ManageUsers = lazy(() => import("./pages/Admin/ManageUsers"));
-const AdminManageJobs = lazy(() => import("./pages/Admin/adminManageJobs"));
+const AdminManageJobs = lazy(() => import("./pages/Admin/AdminManageJobs"));
 const ManageApplication = lazy(() => import("./pages/Admin/ManageApplication"));
 const AdminApplicationDetails = lazy(() => import("./pages/Admin/AdminApplicationDetails"));
 
