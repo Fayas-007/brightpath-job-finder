@@ -24,11 +24,21 @@ app.use(
   })
 );
 
-connectDB().catch((err) => {
-  console.error("MongoDB startup failed:", err.message);
-});
-
 app.use(express.json());
+
+const ensureDatabase = async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("MongoDB request failed:", err.message);
+    res.status(503).json({
+      message: "Database connection unavailable. Check the backend MONGO_URI environment variable.",
+    });
+  }
+};
+
+app.use("/api", ensureDatabase);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
@@ -49,7 +59,13 @@ const PORT = process.env.PORT || 5000;
 
 // Vercel imports the Express app as a serverless function, while local and normal Node hosts run app.listen.
 if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) {
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  connectDB()
+    .then(() => {
+      app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    })
+    .catch((err) => {
+      console.error("MongoDB startup failed:", err.message);
+    });
 }
 
 module.exports = app;

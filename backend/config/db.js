@@ -29,7 +29,9 @@ const connectDB = async () => {
     const mongoURI = getMongoUri();
 
     if (!connectionPromise) {
-      connectionPromise = mongoose.connect(mongoURI);
+      connectionPromise = mongoose.connect(mongoURI, {
+        serverSelectionTimeoutMS: 5000,
+      });
     }
 
     cachedConnection = await connectionPromise;
