@@ -3,6 +3,7 @@ const Job = require("../models/Job");
 const Application = require("../models/Application");
 const Notification = require("../models/Notification");
 const bcrypt = require("bcryptjs");
+const { getPublicUploadUrl } = require("../utils/uploadPath");
 const {
   deleteJobsAndRelatedData,
   deleteUserRelatedData,
@@ -74,7 +75,7 @@ exports.createUser = async (req, res) => {
     // Create full URL for employer profile image if uploaded
     let avatarUrl;
     if (role === "employer" && req.file) {
-      avatarUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+      avatarUrl = getPublicUploadUrl(req.file);
     }
 
     const newUser = new User({
@@ -147,7 +148,7 @@ exports.updateUser = async (req, res) => {
 
       // Update logo if a new file is uploaded
       if (req.file) {
-        user.avatar = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+        user.avatar = getPublicUploadUrl(req.file);
       }
     } else {
       // Clear employer fields if changing to non-employer

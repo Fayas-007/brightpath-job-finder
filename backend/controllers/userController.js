@@ -1,16 +1,6 @@
-const fs = require("fs");
 const User = require("../models/User");
 const Application = require("../models/Application");
-const { uploadDir, resolveUploadedPath } = require("../utils/uploadPath");
-
-const deleteUploadedFile = (fileUrl) => {
-  if (!fileUrl) return;
-
-  const filePath = resolveUploadedPath(fileUrl);
-
-  if (!filePath.startsWith(uploadDir)) return;
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-};
+const { deleteUploadedFile, getPublicUploadUrl } = require("../utils/uploadPath");
 
 const isTemporaryBrowserUrl = (url) =>
   typeof url === "string" && url.startsWith("blob:");
@@ -42,9 +32,9 @@ exports.updateProfile = async (req, res) => {
     // Update avatar if uploaded
     if (req.files?.avatar?.length) {
       if (user.avatar) {
-        deleteUploadedFile(user.avatar);
+        await deleteUploadedFile(user.avatar);
       }
-      user.avatar = `/uploads/${req.files.avatar[0].filename}`;
+      user.avatar = getPublicUploadUrl(req.files.avatar[0]);
     }
 
     // Update resume if uploaded
@@ -55,9 +45,9 @@ exports.updateProfile = async (req, res) => {
           resume: user.resume,
         });
 
-        if (!resumeInUse) deleteUploadedFile(user.resume);
+        if (!resumeInUse) await deleteUploadedFile(user.resume);
       }
-      user.resume = `/uploads/${req.files.resume[0].filename}`;
+      user.resume = getPublicUploadUrl(req.files.resume[0]);
       user.resumeName = req.files.resume[0].originalname;
     }
 
@@ -113,7 +103,7 @@ exports.deleteResume = async (req, res) => {
     });
 
     if (!resumeInUse) {
-      deleteUploadedFile(currentResume);
+      await deleteUploadedFile(currentResume);
     }
 
     user.resume = "";

@@ -11,6 +11,7 @@ const {
 } = require("../controllers/authController");
 const { protect } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/uploadMiddleware");
+const { getPublicUploadUrl } = require("../utils/uploadPath");
 
 const router = express.Router();
 
@@ -28,8 +29,7 @@ router.post("/upload-image", uploadImage, (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: "No file uploaded" });
   }
-  const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-  res.status(200).json({ imageUrl });
+  res.status(200).json({ imageUrl: getPublicUploadUrl(req.file) });
 });
 
 // Forgot password & reset password routes

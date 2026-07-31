@@ -1,7 +1,11 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { uploadDir } = require("./utils/uploadPath");
+const {
+  streamUploadedFile,
+  uploadDir,
+  usesGridFsUploads,
+} = require("./utils/uploadPath");
 const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
@@ -49,7 +53,30 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/uploads", express.static(uploadDir));
+
+if (usesGridFsUploads) {
+  app.get("/uploads/:filename", ensureDatabase, async (req, res) => {
+    try {
+      const fileSent = await streamUploadedFile(req.params.filename, res);
+      if (!fileSent && !res.headersSent) {
+        return res.status(404).json({ message: "File not found" });
+      }
+    } catch (err) {
+      console.error("uploaded file stream failed:", err.message);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "File could not be loaded" });
+      }
+    }
+  });
+} else {
+  app.use(
+    "/uploads",
+    express.static(uploadDir, {
+      immutable: true,
+      maxAge: "1y",
+    })
+  );
+}
 
 app.get("/", (req, res) => {
   res.send("Server is running...");

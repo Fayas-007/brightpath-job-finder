@@ -2,23 +2,17 @@ const Application = require("../models/Application");
 const Job = require("../models/Job");
 const Notification = require("../models/Notification");
 const sendEmail = require("../utils/sendEmail");
-const fs = require("fs");
-const path = require("path");
-const { uploadDir, resolveUploadedPath } = require("../utils/uploadPath");
+const {
+  deleteUploadedFile,
+  getPublicUploadUrl,
+  getUploadedFileName,
+  streamUploadedFile,
+} = require("../utils/uploadPath");
 
 const VALID_STATUSES = ["Applied", "In Review", "Rejected", "Accepted"];
 
-const deleteUploadedFile = (fileUrl) => {
-  if (!fileUrl) return;
-
-  const filePath = resolveUploadedPath(fileUrl);
-
-  if (!filePath.startsWith(uploadDir)) return;
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-};
-
-const deleteIncomingResume = (req) => {
-  if (req.file) deleteUploadedFile(`/uploads/${req.file.filename}`);
+const deleteIncomingResume = async (req) => {
+  if (req.file) await deleteUploadedFile(getPublicUploadUrl(req.file));
 };
 
 const createNotification = async (data) => {
@@ -34,12 +28,12 @@ exports.applyToJob = async (req, res) => {
   try {
     // Only jobseekers can apply
     if (req.user.role !== "jobseeker") {
-      deleteIncomingResume(req);
+      await deleteIncomingResume(req);
       return res.status(403).json({ message: "Only job seekers can apply" });
     }
 
     const user = req.user;
-    const uploadedResume = req.file ? `/uploads/${req.file.filename}` : "";
+    const uploadedResume = req.file ? getPublicUploadUrl(req.file) : "";
     const uploadedResumeName = req.file?.originalname || "";
     let resumeForApplication = uploadedResume || user.resume;
     const resumeNameForApplication = uploadedResumeName || user.resumeName || "";
@@ -55,19 +49,19 @@ exports.applyToJob = async (req, res) => {
     });
 
     if (existing) {
-      deleteIncomingResume(req);
+      await deleteIncomingResume(req);
       return res.status(400).json({ message: "Already applied to this job" });
     }
 
     // Find the job
     const job = await Job.findById(req.params.jobId).populate("company", "companyName name email");
     if (!job) {
-      deleteIncomingResume(req);
+      await deleteIncomingResume(req);
       return res.status(404).json({ message: "Job not found" });
     }
 
     if (job.isClosed) {
-      deleteIncomingResume(req);
+      await deleteIncomingResume(req);
       return res.status(400).json({ message: "This job is closed and no longer accepts applications" });
     }
 
@@ -100,7 +94,7 @@ exports.applyToJob = async (req, res) => {
         user.resume = uploadedResume;
         user.resumeName = uploadedResumeName;
         await user.save();
-        if (previousResume && !previousResumeInUse) deleteUploadedFile(previousResume);
+        if (previousResume && !previousResumeInUse) await deleteUploadedFile(previousResume);
       } catch (profileError) {
         console.error("Failed to save latest resume to profile:", {
           userId: req.user._id,
@@ -254,7 +248,7 @@ exports.applyToJob = async (req, res) => {
     });
 
   } catch (err) {
-    deleteIncomingResume(req);
+    await deleteIncomingResume(req);
     console.error("applyToJob error:", err);
     res.status(500).json({ message: err.message });
   }
@@ -343,16 +337,16 @@ exports.downloadApplicationResume = async (req, res) => {
       return res.status(404).json({ message: "Submitted resume unavailable" });
     }
 
-    const fileName = path.basename(app.resume);
-    const filePath = resolveUploadedPath(app.resume);
+    const fileName = getUploadedFileName(app.resume);
+    const fileSent = await streamUploadedFile(app.resume, res, {
+      downloadName: app.resumeName || fileName,
+    });
 
-    if (!filePath.startsWith(uploadDir) || !fs.existsSync(filePath)) {
+    if (!fileSent) {
       return res.status(404).json({
         message: "The submitted resume file is no longer available",
       });
     }
-
-    res.download(filePath, app.resumeName || fileName);
   } catch (err) {
     console.error("downloadApplicationResume error:", err);
     res.status(500).json({ message: err.message });
