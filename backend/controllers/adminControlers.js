@@ -4,6 +4,7 @@ const Application = require("../models/Application");
 const Notification = require("../models/Notification");
 const bcrypt = require("bcryptjs");
 const { getPublicUploadUrl } = require("../utils/uploadPath");
+const { validatePassword } = require("../utils/passwordPolicy");
 const {
   deleteJobsAndRelatedData,
   deleteUserRelatedData,
@@ -68,6 +69,8 @@ exports.createUser = async (req, res) => {
     const { name, email, password, role, companyName, companyDescription } = req.body;
 
     if (!password) return res.status(400).json({ message: "Password is required" });
+    const passwordError = validatePassword(password);
+    if (passwordError) return res.status(400).json({ message: passwordError });
 
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) return res.status(400).json({ message: "Email already exists" });
@@ -139,7 +142,11 @@ exports.updateUser = async (req, res) => {
     if (name) user.name = name;
     if (email) user.email = email.toLowerCase();
     if (role) user.role = role;
-    if (password) user.password = password; // pre-save hook hashes
+    if (password) {
+      const passwordError = validatePassword(password);
+      if (passwordError) return res.status(400).json({ message: passwordError });
+      user.password = password; // pre-save hook hashes
+    }
 
     // Update employer-specific fields if role is employer
     if (role === "employer") {

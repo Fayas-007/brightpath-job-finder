@@ -26,7 +26,7 @@ RESET_PASSWORD: "/api/auth/reset-password",
 },
   JOBS: {
     GET_ALL_JOBS: '/api/jobs',
-    GET_JOB_BY_ID: (id) => `/api/jobs/${id}`, // ✅ Fixed key name
+    GET_JOB_BY_ID: (id) => `/api/jobs/${id}`, 
     POST_JOB: "/api/jobs",
     GET_JOBS_EMPLOYER: "/api/jobs/get-jobs-employer",
     UPDATE_JOB: (id) => `/api/jobs/${id}`,

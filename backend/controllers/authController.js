@@ -2,6 +2,8 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
+const { validatePassword } = require("../utils/passwordPolicy");
+
 // Generate token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "60d" });
@@ -20,6 +22,11 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "Name, email, password, and role are required" });
     }
 
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
+    }
+    // Choose the role
     if (!["jobseeker", "employer"].includes(role)) {
       return res.status(400).json({ message: "Please choose Job Seeker or Employer" });
     }
@@ -59,7 +66,12 @@ exports.login = async (req, res) => {
   let { email, password } = req.body;
 
   try {
-    email = email.toLowerCase(); // <- make login case-insensitive
+    email = email?.trim().toLowerCase(); // <- make login case-insensitive
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -139,6 +151,11 @@ exports.resetPassword = async (req, res) => {
   const { newPassword } = req.body;
 
   try {
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
+    }
+
     const user = await User.findOne({
       resetPasswordToken: token,
       resetPasswordExpires: { $gt: Date.now() },

@@ -2,10 +2,18 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const {
+  authRateLimiter,
+  corsOptions,
+  limitWriteRequests,
+  securityHeaders,
+  uploadRateLimiter,
+} = require("./middlewares/securityMiddleware");
+const {
   streamUploadedFile,
   uploadDir,
   usesGridFsUploads,
 } = require("./utils/uploadPath");
+
 const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
@@ -20,15 +28,20 @@ const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express();
 
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+app.set("trust proxy", 1);
 
-app.use(express.json());
+app.use(securityHeaders);
+app.use(cors(corsOptions));
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: false, limit: "100kb" }));
+app.use("/api/auth/login", authRateLimiter);
+app.use("/api/auth/register", authRateLimiter);
+app.use("/api/auth/forgot-password", authRateLimiter);
+app.use("/api/auth/reset-password", authRateLimiter);
+app.use("/api/auth/upload-image", uploadRateLimiter);
+app.use("/api/upload", uploadRateLimiter);
+app.use("/api/user/profile", uploadRateLimiter);
+app.use("/api", limitWriteRequests);
 
 const ensureDatabase = async (req, res, next) => {
   try {
