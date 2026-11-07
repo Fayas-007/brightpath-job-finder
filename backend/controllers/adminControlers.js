@@ -3,7 +3,10 @@ const Job = require("../models/Job");
 const Application = require("../models/Application");
 const Notification = require("../models/Notification");
 const bcrypt = require("bcryptjs");
-const { getPublicUploadUrl } = require("../utils/uploadPath");
+const {
+  deleteUploadedFile,
+  getPublicUploadUrl,
+} = require("../utils/uploadPath");
 const { validatePassword } = require("../utils/passwordPolicy");
 const {
   deleteJobsAndRelatedData,
@@ -131,49 +134,123 @@ exports.deleteUser = async (req, res) => {
 
 
 
-// Update user
 exports.updateUser = async (req, res) => {
   try {
-    const { name, email, password, role, companyName, companyDescription } = req.body;
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const {
+      name,
+      email,
+      password,
+      role,
+      companyName,
+      companyDescription,
+    } = req.body;
 
-    // Update basic fields
-    if (name) user.name = name;
-    if (email) user.email = email.toLowerCase();
-    if (role) user.role = role;
-    if (password) {
-      const passwordError = validatePassword(password);
-      if (passwordError) return res.status(400).json({ message: passwordError });
-      user.password = password; // pre-save hook hashes
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      // Multer may already have uploaded the file to Cloudinary.
+      // Clean it up if the target user doesn't exist.
+      if (req.file) {
+        await deleteUploadedFile(getPublicUploadUrl(req.file));
+      }
+
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // Update employer-specific fields if role is employer
-    if (role === "employer") {
-      user.companyName = companyName || user.companyName;
-      user.companyDescription = companyDescription || user.companyDescription;
+    if (password) {
+      const passwordError = validatePassword(password);
 
-      // Update logo if a new file is uploaded
+      if (passwordError) {
+        if (req.file) {
+          await deleteUploadedFile(getPublicUploadUrl(req.file));
+        }
+
+        return res.status(400).json({ message: passwordError });
+      }
+    }
+
+    const previousAvatar = user.avatar;
+
+    if (name) user.name = name;
+    if (email) user.email = email.toLowerCase();
+
+    if (password) {
+      user.password = password;
+    }
+
+    if (role === "employer") {
+      user.role = role;
+      user.companyName = companyName || user.companyName;
+      user.companyDescription =
+        companyDescription || user.companyDescription;
+
       if (req.file) {
         user.avatar = getPublicUploadUrl(req.file);
       }
     } else {
-      // Clear employer fields if changing to non-employer
+      if (role) user.role = role;
+
       user.companyName = undefined;
       user.companyDescription = undefined;
     }
 
-    await user.save();
+    try {
+      await user.save();
+    } catch (saveError) {
+      // The new upload is unused if the database update fails.
+      if (req.file) {
+        try {
+          await deleteUploadedFile(getPublicUploadUrl(req.file));
+        } catch (cleanupError) {
+          console.error(
+            "Failed to clean up new avatar after save failure:",
+            cleanupError.message
+          );
+        }
+      }
+
+      throw saveError;
+    }
+
+    // Delete the old image only after the database update succeeds.
+    if (
+      req.file &&
+      role === "employer" &&
+      previousAvatar &&
+      previousAvatar !== user.avatar
+    ) {
+      try {
+        const deleted = await deleteUploadedFile(previousAvatar);
+
+        if (!deleted) {
+          console.warn(
+            `Old avatar cleanup unsuccessful for user ${user._id}`
+          );
+        }
+      } catch (cleanupError) {
+        console.error(
+          "Failed to delete old employer logo:",
+          cleanupError.message
+        );
+      }
+    }
 
     const userToReturn = user.toObject();
     delete userToReturn.password;
 
-    res.json({ message: "User updated successfully", user: userToReturn });
+    return res.json({
+      message: "User updated successfully",
+      user: userToReturn,
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to update user" });
+    console.error("updateUser error:", err);
+
+    return res.status(500).json({
+      message: "Failed to update user",
+    });
   }
 };
+
 
 
 // Create a new job

@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
 const { validatePassword } = require("../utils/passwordPolicy");
+const { buildResetEmail } = require("../utils/emailTemplates");
 
 // Generate token
 const generateToken = (id) => {
@@ -26,6 +27,7 @@ exports.register = async (req, res) => {
     if (passwordError) {
       return res.status(400).json({ message: passwordError });
     }
+
     // Choose the role
     if (!["jobseeker", "employer"].includes(role)) {
       return res.status(400).json({ message: "Please choose Job Seeker or Employer" });
@@ -49,10 +51,10 @@ exports.register = async (req, res) => {
       avatar: user.avatar,
       role: user.role,
       token: generateToken(user._id),
-      companyName: user.companyName || '',
-      companyDescription: user.companyDescription || '',
-      resume: user.resume || '',
-      resumeName: user.resumeName || '',
+      companyName: user.companyName || "",
+      companyDescription: user.companyDescription || "",
+      resume: user.resume || "",
+      resumeName: user.resumeName || "",
     });
   } catch (err) {
     const statusCode = err.name === "ValidationError" ? 400 : 500;
@@ -60,13 +62,12 @@ exports.register = async (req, res) => {
   }
 };
 
-
 // @desc Login user
 exports.login = async (req, res) => {
   let { email, password } = req.body;
 
   try {
-    email = email?.trim().toLowerCase(); // <- make login case-insensitive
+    email = email?.trim().toLowerCase(); // make login case-insensitive
 
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
@@ -114,41 +115,67 @@ exports.getMe = async (req, res) => {
   res.json(req.user);
 };
 
+const hashToken = (token) =>
+  crypto.createHash("sha256").update(token).digest("hex");
 
 // @desc Send password reset email
 exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
+  const email = req.body?.email?.trim().toLowerCase();
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  // Same response whether or not the account exists
+  const genericResponse = {
+    message: "If an account exists for that email, a reset link has been sent",
+  };
 
   try {
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const user = await User.findOne({ email });
+    if (!user) return res.json(genericResponse);
 
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString("hex");
-    user.resetPasswordToken = resetToken;
+
+    // Store only the hash; the raw token goes in the email
+    user.resetPasswordToken = hashToken(resetToken);
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
-    await user.save();
+    await user.save({ validateBeforeSave: false });
 
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const baseUrl = (process.env.FRONTEND_URL || "").replace(/\/+$/, "");
+    const resetLink = `${baseUrl}/reset-password/${resetToken}`;
+    const { html, text } = buildResetEmail({
+      resetLink,
+      name: user.name,
+      email: user.email,
+      expiresInMinutes: 60,
+    });
 
-    await sendEmail(
-      user.email,
-      "BrightPath Password Reset",
-      `Click the link below to reset your password:\n\n${resetLink}\n\nThis link expires in 1 hour.`
-    );
+    try {
+      await sendEmail(user.email, "BrightPath Password Reset", html, text);
+    } catch (mailError) {
+      // Don't leave a usable token behind if the email never went out
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save({ validateBeforeSave: false });
 
-    res.json({ message: "Password reset email sent" });
+      console.error("forgotPassword email error:", mailError.message);
+      return res
+        .status(500)
+        .json({ message: "We couldn't send the email. Please try again later." });
+    }
+
+    res.json(genericResponse);
   } catch (err) {
-    console.error(err);
+    console.error("forgotPassword error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-
 // @desc Reset password
 exports.resetPassword = async (req, res) => {
   const { token } = req.params;
-  const { newPassword } = req.body;
+  const { newPassword, confirmPassword } = req.body;
 
   try {
     const passwordError = validatePassword(newPassword);
@@ -156,22 +183,37 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ message: passwordError });
     }
 
+    // Confirm password is checked on the server too, not just in the browser
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+
     const user = await User.findOne({
-      resetPasswordToken: token,
+      resetPasswordToken: hashToken(token),
       resetPasswordExpires: { $gt: Date.now() },
     });
 
-    if (!user) return res.status(400).json({ message: "Invalid or expired token" });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    // Reject the password the user already has
+    const isSamePassword = await user.matchPassword(newPassword);
+    if (isSamePassword) {
+      return res.status(400).json({
+        message: "New password must be different from your current password",
+      });
+    }
 
     user.password = newPassword; // hashed in pre-save hook
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
 
-    await user.save();
+    await user.save({ validateBeforeSave: false });
 
     res.json({ message: "Password has been reset successfully" });
   } catch (err) {
-    console.error(err);
+    console.error("resetPassword error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };

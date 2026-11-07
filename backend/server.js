@@ -15,7 +15,8 @@ const {
 } = require("./utils/uploadPath");
 
 const connectDB = require("./config/db");
-
+const User = require("./models/User");
+const Application = require("./models/Application");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const jobRoutes = require("./routes/jobRoutes");
@@ -67,28 +68,91 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/notifications", notificationRoutes);
 
+const isPrivateResume = async (filename) => {
+  const resumeUrl = `/uploads/${filename}`;
+
+  const [userResumeExists, applicationResumeExists] = await Promise.all([
+    User.exists({ resume: resumeUrl }),
+    Application.exists({ resume: resumeUrl }),
+  ]);
+
+  return Boolean(userResumeExists || applicationResumeExists);
+};
+
 if (usesGridFsUploads) {
   app.get("/uploads/:filename", ensureDatabase, async (req, res) => {
     try {
-      const fileSent = await streamUploadedFile(req.params.filename, res);
+      const filename = req.params.filename;
+
+      // Never expose files currently referenced as resumes publicly.
+      if (await isPrivateResume(filename)) {
+        return res.status(403).json({
+          message: "This file requires authorized access.",
+        });
+      }
+
+      const fileSent = await streamUploadedFile(filename, res);
+
       if (!fileSent && !res.headersSent) {
         return res.status(404).json({ message: "File not found" });
       }
     } catch (err) {
-      console.error("uploaded file stream failed:", err.message);
+      console.error("Uploaded file stream failed:", err.message);
+
+      if (!res.headersSent) {
+        return res.status(500).json({
+          message: "File could not be loaded",
+        });
+      }
+    }
+  });
+} else {
+  app.get("/uploads/:filename", ensureDatabase, async (req, res) => {
+    try {
+      const filename = req.params.filename;
+
+      // Never expose files currently referenced as resumes publicly.
+      if (await isPrivateResume(filename)) {
+        return res.status(403).json({
+          message: "This file requires authorized access.",
+        });
+      }
+
+      const path = require("path");
+      const filePath = path.resolve(uploadDir, filename);
+      const relativePath = path.relative(uploadDir, filePath);
+
+      // Prevent path traversal outside the uploads directory.
+      if (
+        !relativePath ||
+        relativePath.startsWith("..") ||
+        path.isAbsolute(relativePath)
+      ) {
+        return res.status(400).json({ message: "Invalid filename" });
+      }
+
+      res.setHeader(
+        "Cache-Control",
+        "public, max-age=31536000, s-maxage=31536000, immutable"
+      );
+
+      res.sendFile(filePath, (err) => {
+        if (err && !res.headersSent) {
+          res.status(err.statusCode === 404 ? 404 : 500).json({
+            message: err.statusCode === 404
+              ? "File not found"
+              : "File could not be loaded",
+          });
+        }
+      });
+    } catch (err) {
+      console.error("Uploaded file request failed:", err.message);
+
       if (!res.headersSent) {
         res.status(500).json({ message: "File could not be loaded" });
       }
     }
   });
-} else {
-  app.use(
-    "/uploads",
-    express.static(uploadDir, {
-      immutable: true,
-      maxAge: "1y",
-    })
-  );
 }
 
 app.get("/", (req, res) => {

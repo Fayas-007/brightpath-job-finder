@@ -1,0 +1,86 @@
+:root { --m-ease: cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* Cards and blocks: rise in */
+.m-reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.7s var(--m-ease) var(--m-delay, 0ms),
+    transform 0.7s var(--m-ease) var(--m-delay, 0ms);
+}
+.m-reveal.is-in { opacity: 1; transform: none; }
+
+/* Fade only */
+.m-reveal.m-fade {
+  transform: none;
+  transition: opacity 0.8s var(--m-ease) var(--m-delay, 0ms);
+}
+
+/* Wipe in from the left (dark queue card).
+   The clip sits on the child so the observed wrapper keeps its box. */
+.m-reveal.m-wipe { opacity: 1; transform: none; transition: none; }
+.m-reveal.m-wipe > * {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 1s cubic-bezier(0.77, 0, 0.18, 1) var(--m-delay, 0ms);
+}
+.m-reveal.m-wipe.is-in > * { clip-path: inset(0 0 0 0); }
+
+/* Rows inside a revealed card stagger in */
+.m-reveal .m-item {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s var(--m-ease), transform 0.5s var(--m-ease);
+}
+.m-reveal.is-in .m-item { opacity: 1; transform: none; }
+
+/* Bars grow when their card enters view */
+.m-grow {
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.95s var(--m-ease);
+}
+.m-reveal.is-in .m-grow { transform: scaleX(1); }
+
+/* Headline slides up out of a mask */
+.m-mask { display: block; overflow: hidden; padding-bottom: 0.12em; margin-bottom: -0.12em; }
+.m-mask > span {
+  display: block;
+  transform: translateY(110%);
+  transition: transform 0.9s var(--m-ease);
+}
+.m-mask.is-in > span { transform: none; }
+
+/* Backdrop settles in on every page change */
+@keyframes m-backdrop-in {
+  from { opacity: 0; transform: scale(1.04); }
+  to { opacity: 1; transform: scale(1); }
+}
+.m-backdrop { animation: m-backdrop-in 1.4s var(--m-ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .m-reveal, .m-reveal .m-item, .m-grow, .m-mask > span {
+    opacity: 1; transform: none; clip-path: none; transition: none;
+  }
+  .m-reveal.m-wipe > * { clip-path: none; transition: none; }
+  .m-backdrop { animation: none; }
+  .m-row { animation: none; }
+  .m-overlay, .m-panel { animation: none; }
+}
+
+/* Table rows: animate on mount (rows mount after the card is revealed) */
+@keyframes m-row-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.m-row {
+  animation: m-row-in 0.5s var(--m-ease) both;
+  animation-delay: var(--m-row-delay, 0ms);
+}
+
+@keyframes m-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes m-panel-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.m-overlay { animation: m-overlay-in 0.25s ease both; }
+.m-panel { animation: m-panel-in 0.4s var(--m-ease) both; }

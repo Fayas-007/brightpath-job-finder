@@ -1,8 +1,15 @@
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
 import toast from "react-hot-toast";
 import axiosInstance from "../../utils/axiosInstance";
 import { CATEGORIES, JOB_TYPES } from "../../utils/data";
+import {
+  Field,
+  Modal,
+  Section,
+  Select,
+  inputClass,
+  textareaClass,
+} from "../../components/common/ModalKit";
 
 const CreateJobModal = ({ onClose, onCreate }) => {
   const [title, setTitle] = useState("");
@@ -60,122 +67,133 @@ const CreateJobModal = ({ onClose, onCreate }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 mx-4 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"
-        >
-          <X className="w-5 h-5" />
-        </button>
-        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
-          Create Job
-        </h2>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <select
-            value={companyId}
-            onChange={(e) => setCompanyId(e.target.value)}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-            required
-          >
-            <option value="">Select Employer *</option>
-            {employers.map((e) => (
-              <option key={e._id} value={e._id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-
+    <Modal
+      size="lg"
+      label="Jobs"
+      title="Create job"
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      submitText={loading ? "Creating..." : "Create job"}
+      submitting={loading}
+    >
+      <Section title="Role">
+        <Field label="Job title" required>
           <input
             type="text"
-            placeholder="Job Title *"
+            placeholder="e.g. Frontend Developer"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
+            className={inputClass}
             required
           />
-          <textarea
-            placeholder="Job Description *"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all resize-none"
-            rows={4}
-            required
-          />
-          <textarea
-            placeholder="Requirements *"
-            value={requirements}
-            onChange={(e) => setRequirements(e.target.value)}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all resize-none"
-            rows={4}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-          />
+        </Field>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Employer" required>
+            <Select
+              value={companyId}
+              onChange={(e) => setCompanyId(e.target.value)}
               required
             >
-              <option value="">Select Category *</option>
+              <option value="">Select employer</option>
+              {employers.map((emp) => (
+                <option key={emp._id} value={emp._id}>
+                  {emp.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field label="Location">
+            <input
+              type="text"
+              placeholder="e.g. Colombo, Remote"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+
+          <Field label="Category" required>
+            <Select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              required
+            >
+              <option value="">Select category</option>
               {CATEGORIES.map((cat) => (
                 <option key={cat.value} value={cat.value}>
                   {cat.label}
                 </option>
               ))}
-            </select>
+            </Select>
+          </Field>
 
-            <select
+          <Field label="Job type" required>
+            <Select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
               required
             >
-              <option value="">Select Job Type *</option>
+              <option value="">Select job type</option>
               {JOB_TYPES.map((jt) => (
                 <option key={jt.value} value={jt.value}>
                   {jt.label}
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
+        </div>
+      </Section>
 
-          <div className="flex gap-2">
+      <Section title="Details">
+        <Field label="Description" required>
+          <textarea
+            placeholder="What the role involves"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className={`${textareaClass} min-h-[150px]`}
+            rows={6}
+            required
+          />
+        </Field>
+
+        <Field label="Requirements" required>
+          <textarea
+            placeholder="Skills and experience needed"
+            value={requirements}
+            onChange={(e) => setRequirements(e.target.value)}
+            className={`${textareaClass} min-h-[150px]`}
+            rows={6}
+            required
+          />
+        </Field>
+      </Section>
+
+      <Section title="Salary">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Minimum">
             <input
               type="number"
-              placeholder="Salary Min"
+              placeholder="0"
               value={salaryMin}
               onChange={(e) => setSalaryMin(e.target.value)}
-              className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all w-1/2"
+              className={inputClass}
             />
+          </Field>
+
+          <Field label="Maximum">
             <input
               type="number"
-              placeholder="Salary Max"
+              placeholder="0"
               value={salaryMax}
               onChange={(e) => setSalaryMax(e.target.value)}
-              className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all w-1/2"
+              className={inputClass}
             />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold transition shadow-md"
-          >
-            {loading ? "Creating..." : "Create Job"}
-          </button>
-        </form>
-      </div>
-    </div>
+          </Field>
+        </div>
+      </Section>
+    </Modal>
   );
 };
 

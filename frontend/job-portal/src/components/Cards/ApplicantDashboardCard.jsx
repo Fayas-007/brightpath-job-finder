@@ -1,27 +1,43 @@
-import { Clock } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 
-const ApplicantDashboardCard = ({ applicant = {}, position = "", time = "" }) => {
-  const name = applicant.name || "Unknown Candidate";
+const ApplicantDashboardCard = ({
+  applicant = {},
+  position = "",
+  time = "",
+}) => {
+  const name = applicant.name || "Unknown candidate";
+
   const initials = name
-    .split(" ")
-    .map((n) => n[0])
-    .join("");
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-slate-100 p-4 transition-colors hover:border-slate-200 hover:bg-slate-50">
-      <div className="flex items-center space-x-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50">
-          <span className="text-sm font-black text-teal-700">{initials}</span>
-        </div>
-        <div>
-          <h4 className="text-[15px] font-bold text-slate-950">{name}</h4>
-          <p className="text-sm text-slate-500">{position}</p>
-        </div>
+    <div className="group flex items-center gap-4 px-6 py-4 transition-colors hover:bg-[#f5f8ff]">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#eaf0ff] text-sm font-bold text-[#1646e0]">
+        {initials || "?"}
       </div>
-      <div className="flex items-center text-xs text-slate-500">
-        <Clock className="mr-1 h-3 w-3" />
-        {time}
+
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-[15px] font-bold text-[#0a1f6b] transition-colors group-hover:text-[#1646e0]">
+          {name}
+        </h3>
+
+        <p className="mt-0.5 truncate text-[13px] text-slate-500">
+          Applied for{" "}
+          <span className="font-semibold text-slate-700">
+            {position || "an unspecified position"}
+          </span>
+        </p>
       </div>
+
+      <span className="flex-shrink-0 text-[13px] text-slate-500">{time}</span>
+
+      <ArrowUpRight className="hidden h-4 w-4 flex-shrink-0 text-slate-300 transition-colors group-hover:text-[#1646e0] sm:block" />
     </div>
   );
 };

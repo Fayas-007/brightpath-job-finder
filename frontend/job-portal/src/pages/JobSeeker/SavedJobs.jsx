@@ -1,9 +1,4 @@
-import {
-  ArrowLeft,
-  Bookmark,
-  Grid,
-  List,
-} from "lucide-react";
+import { ArrowLeft, Bookmark, Grid, List } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axiosInstance";
@@ -14,139 +9,170 @@ import JobCard from "../../components/Cards/JobCard";
 import toast from "react-hot-toast";
 import Footer from "../LandingPage/components/Footer";
 
+const DISPLAY_FONT = { fontFamily: "'Outfit', 'Inter', system-ui, sans-serif" };
+
+const PAGE_BG = "bg-[#f3f5fa]";
+
 const SavedJobs = () => {
   const { user } = useAuth();
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const [savedJobList, setSavedJobList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("grid");
 
   const getSavedJobs = async () => {
     try {
+      setLoading(true);
       const response = await axiosInstance.get(API_PATHS.JOBS.GET_SAVED_JOBS);
       setSavedJobList(response.data);
     } catch (error) {
-      console.error("Error fetching job details:", error);
+      console.error("Error fetching saved jobs:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-const handelUnsaveJob = async (jobId) => {
-  try {
-    await axiosInstance.delete(API_PATHS.JOBS.UNSAVE_JOB(jobId));
-    toast.success("Job removed successfully!");
+  const handleUnsaveJob = async (jobId) => {
+    try {
+      await axiosInstance.delete(API_PATHS.JOBS.UNSAVE_JOB(jobId));
+      toast.success("Job removed successfully!");
 
-    // Remove the job locally instead of refetching
-    setSavedJobList((prev) =>
-      prev.filter((savedJob) => savedJob.job._id !== jobId)
-    );
-  } catch {
-    toast.error("Something went wrong! Try again later");
-  }
-};
-
+      // Remove the job locally instead of refetching
+      setSavedJobList((prev) =>
+        prev.filter((savedJob) => savedJob?.job?._id !== jobId)
+      );
+    } catch {
+      toast.error("Something went wrong! Try again later");
+    }
+  };
 
   useEffect(() => {
     if (user) {
       getSavedJobs();
     }
   }, [user]);
-  
+
+  // Skip saved entries whose job was deleted
+  const visibleJobs = (savedJobList || []).filter((savedJob) => savedJob?.job);
+
   return (
-     <div className="page-with-footer app-background app-background-jobseeker">
+    <div className={`page-with-footer ${PAGE_BG}`}>
       <Navbar />
 
-      <div className="page-footer-main mx-auto max-w-screen-2xl px-4 pt-24 sm:px-6 lg:px-8">
-        {savedJobList && (
-          <div className="rounded-lg bg-white p-4 shadow-sm sm:p-6">
-            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => navigate(-1)}
-                  className="group flex items-center space-x-2 px-3.5 py-2.5 text-sm font-medium text-gray-600 hover:text-white bg-white/50 hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 border border-gray-200 hover:border-transparent rounded-xl transition-all duration-300 shadow-lg shadow-gray-100 hover:shadow-xl transform hover:-translate-y-0.5"
-                >
-                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                </button>
+      <div className="page-footer-main mx-auto w-full max-w-screen-2xl px-4 pb-14 pt-24 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b-2 border-[#0a1f6b] pb-4">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              aria-label="Go back"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-[#0a1f6b] bg-white text-[#0a1f6b] transition-colors hover:bg-[#ffd23f]"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
 
-                <h1 className="text-lg lg:text-xl font-semibold leading-tight text-gray-900">
-                  Saved Jobs
-                </h1>
-              </div>
-
-              <div className="flex items-center gap-3 lg:gap-4">
-                <div className="flex items-center border border-gray-200 rounded-xl p-1 bg-white">
-                  <button
-                    onClick={() => setViewMode("grid")}
-                    className={`p-2 rounded-lg transition-colors ${
-                      viewMode === "grid"
-                        ? "bg-blue-600 text-white shadow-sm"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                    }`}
-                  >
-                    <Grid className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode("list")}
-                    className={`p-2 rounded-lg transition-colors ${
-                      viewMode === "list"
-                        ? "bg-blue-600 text-white shadow-sm"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                    }`}
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Content sections */}
-            <div className="px-0 pb-8 space-y-8">
-              {/* Job Grid */}
-              {savedJobList.length === 0 ? (
-                <div className="text-center py-16 lg:py-20 bg-white/60 backdrop-blur-xl rounded-2xl border border-white/20">
-                  <div className="text-gray-300 mb-6">
-                    <Bookmark className="w-16 h-16 mx-auto" />
-                  </div>
-                  <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-3">
-                    You haven't saved any jobs yet
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    Start saving jobs that interest you to view them later.
-                  </p>
-                  <button
-                    onClick={() => navigate(`/find-jobs`)}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
-                  >
-                    Browse Jobs
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div
-                    className={
-                      viewMode === "grid"
-                        ? "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-4 lg:gap-6"
-                        : "space-y-4 lg:space-y-6"
-                    }
-                  >
-                    {savedJobList.map((savedJob) => (
-                      <JobCard
-                        key={savedJob._id}
-                        job={savedJob?.job}
-                        onClick={() => navigate(`/job/${savedJob?.job._id}`)}
-                        onToggleSave={() => handelUnsaveJob(savedJob?.job._id)}
-                        saved
-                      />
-                    ))}
-                  </div>
-                </>
+            <div>
+              <h1
+                style={DISPLAY_FONT}
+                className="text-3xl font-extrabold tracking-[-0.01em] text-[#0a1f6b] sm:text-4xl"
+              >
+                Saved jobs
+              </h1>
+              {!loading && (
+                <p className="mt-0.5 text-sm text-slate-500">
+                  {visibleJobs.length} {visibleJobs.length === 1 ? "job" : "jobs"} saved
+                </p>
               )}
             </div>
           </div>
+
+          <div className="flex rounded-xl border-2 border-[#0a1f6b] bg-white p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              aria-label="Grid view"
+              aria-pressed={viewMode === "grid"}
+              className={`rounded-lg p-2 transition-colors ${
+                viewMode === "grid"
+                  ? "bg-[#0a1f6b] text-white"
+                  : "text-slate-500 hover:bg-[#eef3ff]"
+              }`}
+            >
+              <Grid className="h-4 w-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              aria-label="List view"
+              aria-pressed={viewMode === "list"}
+              className={`rounded-lg p-2 transition-colors ${
+                viewMode === "list"
+                  ? "bg-[#0a1f6b] text-white"
+                  : "text-slate-500 hover:bg-[#eef3ff]"
+              }`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="rounded-2xl border-2 border-[#0a1f6b]/15 bg-white px-6 py-16 text-center text-sm font-medium text-slate-500">
+            Loading saved jobs...
+          </div>
+        ) : visibleJobs.length === 0 ? (
+          <div className="rounded-2xl border-2 border-dashed border-[#0a1f6b]/25 bg-white px-6 py-16 text-center">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#dbe6ff]">
+              <Bookmark className="h-6 w-6 text-[#1646e0]" />
+            </div>
+
+            <h2
+              style={DISPLAY_FONT}
+              className="text-2xl font-extrabold text-[#0a1f6b]"
+            >
+              No saved jobs yet
+            </h2>
+
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600">
+              Tap the bookmark on any job to keep it here for later.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => navigate("/find-jobs")}
+              className="mt-6 rounded-xl border-2 border-[#0a1f6b] bg-[#ffd23f] px-6 py-2.5 text-sm font-bold text-[#0a1f6b] transition-colors hover:bg-[#f5c400]"
+            >
+              Browse jobs
+            </button>
+          </div>
+        ) : (
+          <div
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3"
+                : "flex flex-col gap-4"
+            }
+          >
+            {visibleJobs.map((savedJob) => (
+              <JobCard
+                key={savedJob._id}
+                job={savedJob.job}
+                onClick={() => navigate(`/job/${savedJob.job._id}`)}
+                onToggleSave={() => handleUnsaveJob(savedJob.job._id)}
+                saved
+              />
+            ))}
+          </div>
         )}
       </div>
+
       <Footer />
     </div>
-  )
-}
+  );
+};
 
-export default SavedJobs
+export default SavedJobs;

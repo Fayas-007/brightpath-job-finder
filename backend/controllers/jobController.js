@@ -79,110 +79,205 @@ exports.createJob = async (req, res) => {
 };
 
 exports.getJobs = async (req, res) => {
-
-    const {
-    keyword,
-    location,
-    category,
-    type,
-    minSalary,
-    maxSalary,
-  } = req.query;
-
-  const query = {
-    isClosed: false,
-    ...(keyword && { title: { $regex: keyword, $options: "i" } }),
-    ...(location && { location: { $regex: location, $options: "i" } }),
-    ...(category && { category }),
-    ...(type && { type }),
-  };
-
-  if (minSalary || maxSalary) {
-    query.$and = [];
-
-    if (minSalary) {
-      query.$and.push({ salaryMax: { $gte: Number(minSalary) } });
-    }
-
-    if (maxSalary) {
-      query.$and.push({ salaryMin: { $lte: Number(maxSalary) } });
-    }
-
-    if (query.$and.length === 0) {
-      delete query.$and;
-    }
-  }
-
   try {
-    const jobs = await Job.find(query).populate(
-      "company",
-      "name companyName avatar"
-    );
+    const {
+      keyword,
+      location,
+      category,
+      type,
+      minSalary,
+      maxSalary,
+    } = req.query;
 
-    let savedJobIds = [];
-    let appliedJobStatusMap = {};
+    // Pagination
+    const parsedPage = Number.parseInt(req.query.page, 10);
+    const parsedLimit = Number.parseInt(req.query.limit, 10);
 
-    const viewerId = req.user?.role === "jobseeker" ? req.user._id : null;
+    const page = Number.isInteger(parsedPage) && parsedPage > 0
+      ? parsedPage
+      : 1;
 
-    if (viewerId) {
-      // Saved Jobs
-      const savedJobs = await SavedJob.find({ jobseeker: viewerId }).select("job");
-      savedJobIds = savedJobs.map((s) => String(s.job));
+    const limit = Number.isInteger(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, 50)
+      : 12;
 
-      // Applications
-      const applications = await Application.find({ applicant: viewerId }).select("job status");
-      applications.forEach((app) => {
-        appliedJobStatusMap[String(app.job)] = app.status;
+    const skip = (page - 1) * limit;
+
+    // Build filters
+    const query = {
+      isClosed: false,
+    };
+
+    if (keyword?.trim()) {
+      query.title = {
+        $regex: keyword.trim(),
+        $options: "i",
+      };
+    }
+
+    if (location?.trim()) {
+      query.location = {
+        $regex: location.trim(),
+        $options: "i",
+      };
+    }
+
+    if (category) query.category = category;
+    if (type) query.type = type;
+
+    // Salary range overlap
+    const salaryConditions = [];
+
+    if (minSalary !== undefined && minSalary !== "") {
+      const min = Number(minSalary);
+
+      if (!Number.isFinite(min)) {
+        return res.status(400).json({
+          message: "Invalid minimum salary",
+        });
+      }
+
+      salaryConditions.push({
+        salaryMax: { $gte: min },
       });
     }
 
-    // Add isSaved and applicationStatus to each job
+    if (maxSalary !== undefined && maxSalary !== "") {
+      const max = Number(maxSalary);
+
+      if (!Number.isFinite(max)) {
+        return res.status(400).json({
+          message: "Invalid maximum salary",
+        });
+      }
+
+      salaryConditions.push({
+        salaryMin: { $lte: max },
+      });
+    }
+
+    if (salaryConditions.length > 0) {
+      query.$and = salaryConditions;
+    }
+
+    // Fetch only the requested page and count all matching jobs.
+    const [jobs, total] = await Promise.all([
+      Job.find(query)
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("company", "name companyName avatar")
+        .lean(),
+
+      Job.countDocuments(query),
+    ]);
+
+    const viewerId =
+      req.user?.role === "jobseeker" ? req.user._id : null;
+
+    let savedJobIds = new Set();
+    let appliedJobStatusMap = new Map();
+
+    if (viewerId) {
+      const [savedJobs, applications] = await Promise.all([
+        SavedJob.find({ jobseeker: viewerId })
+          .select("job")
+          .lean(),
+
+        Application.find({
+          applicant: viewerId,
+          job: { $in: jobs.map((job) => job._id) },
+        })
+          .select("job status")
+          .lean(),
+      ]);
+
+      savedJobIds = new Set(
+        savedJobs.map((savedJob) => String(savedJob.job))
+      );
+
+      appliedJobStatusMap = new Map(
+        applications.map((application) => [
+          String(application.job),
+          application.status,
+        ])
+      );
+    }
+
     const jobsWithExtras = jobs.map((job) => {
-      const jobIdStr = String(job._id);
+      const jobId = String(job._id);
+
       return {
-        ...job.toObject(),
-        isSaved: savedJobIds.includes(jobIdStr),
-        applicationStatus: appliedJobStatusMap[jobIdStr] || null,
+        ...job,
+        isSaved: savedJobIds.has(jobId),
+        applicationStatus: appliedJobStatusMap.get(jobId) || null,
       };
     });
 
-    res.json(jobsWithExtras);
+    return res.json({
+      jobs: jobsWithExtras,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPreviousPage: page > 1,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Error fetching jobs:", err);
+
+    return res.status(500).json({
+      message: "Failed to fetch jobs",
+    });
   }
 };
 
 // @desc    Get jobs for logged in user (Employer can see posted jobs)
+// @desc    Get jobs for logged-in employer with application counts
 exports.getJobsEmployer = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { role } = req.user;
 
-    if (role !== "employer") {
+    if (req.user.role !== "employer") {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    // Get all jobs posted by employer
-    const jobs = await Job.find({ company: userId })
-      .populate("company", "name companyName avatar")
-      .lean(); // .lean() makes jobs plain JS objects so we can add new fields
+    const jobs = await Job.aggregate([
+      {
+        $match: { company: userId },
+      },
+      {
+        $lookup: {
+          from: Application.collection.name,
+          localField: "_id",
+          foreignField: "job",
+          as: "applications",
+        },
+      },
+      {
+        $addFields: {
+          applicationCount: { $size: "$applications" },
+        },
+      },
+      {
+        $project: {
+          applications: 0,
+        },
+      },
+      {
+        $sort: { createdAt: -1, _id: -1 },
+      },
+    ]);
 
-    // Count applications for each job
-    const jobsWithApplicationCounts = await Promise.all(
-      jobs.map(async (job) => {
-        const applicationCount = await Application.countDocuments({
-          job: job._id,
-        });
-        return {
-          ...job,
-          applicationCount,
-        };
-      })
-    );
-
-    res.json(jobsWithApplicationCounts);
+    res.json(jobs);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Error fetching employer jobs:", err);
+
+    res.status(500).json({
+      message: "Failed to fetch employer jobs",
+    });
   }
 };
 

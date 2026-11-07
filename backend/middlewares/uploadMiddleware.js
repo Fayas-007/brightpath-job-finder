@@ -1,112 +1,143 @@
 const multer = require("multer");
-const fs = require("fs");
-const {
-  createUploadFilename,
-  getGridFsBucket,
-  uploadDir,
-  usesGridFsUploads,
-} = require("../utils/uploadPath");
+const cloudinary = require("cloudinary").v2;
+const { PassThrough } = require("stream");
+const { createUploadFilename } = require("../utils/uploadPath");
 
-// Vercel functions can only write to /tmp; normal Node hosts use backend/uploads.
-if (!usesGridFsUploads && !fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const diskStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, createUploadFilename(file.originalname));
-  },
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const gridFsStorage = {
+// Temporary diagnostic: remove after testing.
+console.log("Cloudinary diagnostic:", {
+  cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+  apiKeyLoaded: Boolean(process.env.CLOUDINARY_API_KEY),
+  apiSecretLoaded: Boolean(process.env.CLOUDINARY_API_SECRET),
+});
+
+const cloudinaryStorage = {
   _handleFile(req, file, cb) {
+    const isResume = file.fieldname === "resume";
     const filename = createUploadFilename(file.originalname);
-    const uploadStream = getGridFsBucket().openUploadStream(filename, {
-      contentType: file.mimetype,
-      metadata: {
-        originalName: file.originalname,
-        fieldName: file.fieldname,
+    const publicId = filename.replace(/\.[^.]+$/, "");
+
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        public_id: publicId,
+        resource_type: isResume ? "raw" : "image",
+        type: isResume ? "authenticated" : "upload",
+        folder: isResume ? "brightpath/resumes" : "brightpath/images",
+        overwrite: false,
+        ...(isResume && {
+          context: {
+            original_name: file.originalname,
+          },
+        }),
       },
+      (error, result) => {
+        if (error) {
+          return cb(error);
+        }
+
+        cb(null, {
+          filename: result.public_id,
+          public_id: result.public_id,
+          path: result.secure_url,
+          secure_url: result.secure_url,
+          resource_type: result.resource_type,
+          type: result.type,
+          format: result.format,
+          size: result.bytes,
+          contentType: file.mimetype,
+          originalname: file.originalname,
+          fieldname: file.fieldname,
+        });
+      }
+    );
+
+    const passThrough = new PassThrough();
+
+    passThrough.on("error", (error) => {
+      uploadStream.destroy(error);
     });
 
-    let size = 0;
-    let settled = false;
-    const done = (err, info) => {
-      if (settled) return;
-      settled = true;
-      cb(err, info);
-    };
-
-    file.stream.on("data", (chunk) => {
-      size += chunk.length;
-    });
-    file.stream.on("error", done);
-    uploadStream.on("error", done);
-    uploadStream.on("finish", () => {
-      done(null, {
-        filename,
-        id: uploadStream.id,
-        size,
-        contentType: file.mimetype,
-      });
+    file.stream.on("error", (error) => {
+      uploadStream.destroy(error);
     });
 
-    file.stream.pipe(uploadStream);
+    file.stream.pipe(passThrough).pipe(uploadStream);
   },
 
   _removeFile(req, file, cb) {
-    if (!file.id) return cb(null);
+    if (!file.public_id) {
+      return cb(null);
+    }
 
-    getGridFsBucket()
-      .delete(file.id)
+    cloudinary.uploader
+      .destroy(file.public_id, {
+        resource_type: file.resource_type || "image",
+        type: file.type || "upload",
+      })
       .then(() => cb(null))
       .catch(cb);
   },
 };
 
 const fileFilter = (req, file, cb) => {
-  const imageTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+  const imageTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/jpg",
+    "image/webp",
+  ];
+
   const resumeTypes = [
     "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ];
 
-  const isResumeField = file.fieldname === "resume";
-  const allowedTypes = isResumeField ? resumeTypes : imageTypes;
+  const isResume = file.fieldname === "resume";
+  const allowedTypes = isResume ? resumeTypes : imageTypes;
 
   if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(
-      new Error(
-        isResumeField
-          ? "Only .pdf, .doc, and .docx resume files are allowed"
-          : "Only .jpeg, .jpg, .png, and .webp image files are allowed"
-      ),
-      false
-    );
+    return cb(null, true);
   }
+
+  return cb(
+    new Error(
+      isResume
+        ? "Only PDF, DOC, and DOCX resume files are allowed"
+        : "Only JPEG, JPG, PNG, and WebP images are allowed"
+    )
+  );
 };
 
 const upload = multer({
-  storage: usesGridFsUploads ? gridFsStorage : diskStorage,
+  storage: cloudinaryStorage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
 });
 
 upload.handleError = (err, req, res, next) => {
-  if (!err) return next();
+  if (!err) {
+    return next();
+  }
 
-  if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
-    return res.status(400).json({ message: "File must be 5MB or smaller" });
+  if (
+    err instanceof multer.MulterError &&
+    err.code === "LIMIT_FILE_SIZE"
+  ) {
+    return res.status(400).json({
+      message: "File must be 5MB or smaller",
+    });
   }
 
   return res.status(400).json({
-    message: err.message || "File upload failed. Please try another file",
+    message: err.message || "File upload failed. Please try again.",
   });
 };
 

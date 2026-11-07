@@ -52,3 +52,16 @@ export const isEmployerProfileComplete = (user) =>
       user?.companyDescription?.trim() &&
       isValidAssetUrl(user?.avatar)
   );
+export const getHomePath = (user) => {
+  const role = (user?.role || "").toLowerCase().replace(/\s+/g, "");
+
+  if (role === "admin") return "/admin-dashboard";
+
+  if (role === "employer" || role === "recruiter") {
+    return isEmployerProfileComplete(user)
+      ? "/employer-dashboard"
+      : "/company-profile";
+  }
+
+  return "/find-jobs";
+};

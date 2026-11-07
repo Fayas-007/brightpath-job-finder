@@ -4,6 +4,7 @@ const {
   updateProfile,
   deleteResume,
   getPublicProfile,
+  downloadMyResume,
 } = require("../controllers/userController");
 
 const upload = require("../middlewares/uploadMiddleware");
@@ -27,6 +28,10 @@ router.put(
 
 // Delete resume
 router.post("/resume", protect, deleteResume);
+
+// View/download the logged-in user's own profile resume
+router.get("/resume/download", protect, downloadMyResume);
+
 
 // Profile details
 router.get("/:id", protect, getPublicProfile);

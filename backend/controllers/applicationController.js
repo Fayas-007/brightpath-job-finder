@@ -33,6 +33,13 @@ exports.applyToJob = async (req, res) => {
     }
 
     const user = req.user;
+
+  console.log("Resume upload received:", {
+  fileReceived: Boolean(req.file),
+  originalName: req.file?.originalname,
+  cloudinaryPublicId: req.file?.public_id,
+  cloudinaryUrl: req.file?.secure_url,
+});
     const uploadedResume = req.file ? getPublicUploadUrl(req.file) : "";
     const uploadedResumeName = req.file?.originalname || "";
     let resumeForApplication = uploadedResume || user.resume;
@@ -254,42 +261,114 @@ exports.applyToJob = async (req, res) => {
   }
 };
 // @desc    Get logged-in user's applications
+// @desc    Get paginated applications for the logged-in user
 exports.getMyApplications = async (req, res) => {
   try {
-    const apps = await Application.find({ applicant: req.user._id })
-      .populate({
-        path: "job",
-        populate: {
-          path: "company",
-          select: "companyName avatar",
-        },
-      })
-      .sort({ createdAt: -1 });
+    // Pagination settings
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(
+      50,
+      Math.max(1, Number.parseInt(req.query.limit, 10) || 10)
+    );
+    const skip = (page - 1) * limit;
 
-    res.json(apps);
+    const filter = { applicant: req.user._id };
+
+    // Fetch applications and total count concurrently
+    const [applications, totalApplications] = await Promise.all([
+      Application.find(filter)
+        .populate({
+          path: "job",
+          populate: {
+            path: "company",
+            select: "companyName avatar",
+          },
+        })
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Application.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(totalApplications / limit);
+
+    res.json({
+      applications,
+      pagination: {
+        currentPage: page,
+        limit,
+        totalApplications,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: err.message });
+    console.error("getMyApplications error:", err);
+
+    res.status(500).json({
+      message: "Failed to fetch your applications",
+    });
   }
 };
 
 
 // @desc    Get all applicants for a job (Employer)
+// @desc    Get paginated applicants for a job (Employer)
+// @route   GET /api/applications/job/:jobId
 exports.getApplicantsForJob = async (req, res) => {
   try {
-    const job = await Job.findById(req.params.jobId);
-    
-    if (!job || job.company.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Not authorized to view applicants" });
-    }
-    
-    const applications = await Application.find({ job: req.params.jobId })
-      .populate("job", "title location category type")
-      .populate("applicant", "name email avatar");
+    const job = await Job.findById(req.params.jobId).select("company");
 
-    res.json(applications);
+    // Verify that the job exists and belongs to this employer.
+    if (!job || job.company.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        message: "Not authorized to view applicants",
+      });
+    }
+
+    // Pagination settings
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(
+      50,
+      Math.max(1, Number.parseInt(req.query.limit, 10) || 10)
+    );
+    const skip = (page - 1) * limit;
+
+    // Fetch this page and count all applications for the job.
+    const [applications, totalApplications] = await Promise.all([
+      Application.find({ job: req.params.jobId })
+        .populate("job", "title location category type")
+        .populate("applicant", "name email avatar")
+        .sort({ createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Application.countDocuments({ job: req.params.jobId }),
+    ]);
+
+    const totalPages = Math.ceil(totalApplications / limit);
+
+    res.json({
+      applications,
+      pagination: {
+        currentPage: page,
+        limit,
+        totalApplications,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("getApplicantsForJob error:", err);
+
+    res.status(500).json({
+      message: "Failed to fetch applicants",
+    });
   }
 };
 
@@ -340,6 +419,8 @@ exports.downloadApplicationResume = async (req, res) => {
     const fileName = getUploadedFileName(app.resume);
     const fileSent = await streamUploadedFile(app.resume, res, {
       downloadName: app.resumeName || fileName,
+      isPrivate: true,
+      inline: req.query.inline === "1",
     });
 
     if (!fileSent) {

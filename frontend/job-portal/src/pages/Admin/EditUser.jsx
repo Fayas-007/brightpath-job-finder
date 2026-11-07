@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import axiosInstance from "../../utils/axiosInstance";
+import {
+  Field,
+  Modal,
+  fileClass,
+  inputClass,
+  textareaClass,
+} from "../../components/common/ModalKit";
 
 const EditUserModal = ({ user, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
@@ -59,9 +66,11 @@ const EditUserModal = ({ user, onClose, onUpdate }) => {
       }
       if (avatar) payload.append("avatar", avatar);
 
-      const res = await axiosInstance.put(`/api/admin/users/${user._id}`, payload, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await axiosInstance.put(
+        `/api/admin/users/${user._id}`,
+        payload,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
 
       toast.success(res.data.message || "User updated successfully");
       onUpdate(res.data.user);
@@ -75,108 +84,109 @@ const EditUserModal = ({ user, onClose, onUpdate }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 mx-4 overflow-y-auto max-h-[90vh] transform scale-100 animate-fade-in">
-        <h2 className="text-3xl font-bold mb-6 text-gray-800 text-center">
-          Edit User
-        </h2>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <input
-            type="text"
-            name="name"
-            placeholder="Full Name"
-            value={formData.name}
-            onChange={handleChange}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-            required
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email Address"
-            value={formData.email}
-            onChange={handleChange}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-            required
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password (leave blank to keep current)"
-            value={formData.password}
-            onChange={handleChange}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-          />
-          <select
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-            required
-          >
-            <option value="admin">Admin</option>
-            <option value="jobseeker">Job Seeker</option>
-            <option value="employer">Employer</option>
-          </select>
+    <Modal
+      label="Users"
+      title="Edit user"
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      submitText={saving ? "Saving..." : "Save changes"}
+      submitting={saving}
+    >
+      <Field label="Full name" required>
+        <input
+          type="text"
+          name="name"
+          placeholder="Full name"
+          value={formData.name}
+          onChange={handleChange}
+          className={inputClass}
+          required
+        />
+      </Field>
 
-          {formData.role === "employer" && (
-            <>
-              <input
-                type="text"
-                name="companyName"
-                placeholder="Company Name"
-                value={formData.companyName}
-                onChange={handleChange}
-                className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-                required
-              />
-              <textarea
-                name="companyDescription"
-                placeholder="Company Description"
-                value={formData.companyDescription}
-                onChange={handleChange}
-                className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all resize-none"
-                rows={3}
-              />
-              <div className="flex flex-col gap-2">
-                <label className="font-medium text-gray-700">Employer Profile Image</label>
-                {avatarPreview && (
-                  <img
-                    src={avatarPreview}
-                    alt="Profile Preview"
-                    className="w-28 h-28 object-contain border rounded-md"
-                  />
-                )}
-                <input
-                  type="file"
-                  accept=".png,.jpg,.jpeg"
-                  onChange={handleFileChange}
-                  className="border border-gray-300 px-4 py-2 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
+      <Field label="Email address" required>
+        <input
+          type="email"
+          name="email"
+          placeholder="name@example.com"
+          value={formData.email}
+          onChange={handleChange}
+          className={inputClass}
+          required
+        />
+      </Field>
+
+      <Field label="Password" hint="Leave blank to keep the current password.">
+        <input
+          type="password"
+          name="password"
+          placeholder="New password"
+          value={formData.password}
+          onChange={handleChange}
+          className={inputClass}
+        />
+      </Field>
+
+      <Field label="Role" required>
+        <select
+          name="role"
+          value={formData.role}
+          onChange={handleChange}
+          className={inputClass}
+          required
+        >
+          <option value="admin">Admin</option>
+          <option value="jobseeker">Job Seeker</option>
+          <option value="employer">Employer</option>
+        </select>
+      </Field>
+
+      {formData.role === "employer" && (
+        <>
+          <Field label="Company name" required>
+            <input
+              type="text"
+              name="companyName"
+              placeholder="Company name"
+              value={formData.companyName}
+              onChange={handleChange}
+              className={inputClass}
+              required
+            />
+          </Field>
+
+          <Field label="Company description">
+            <textarea
+              name="companyDescription"
+              placeholder="What the company does"
+              value={formData.companyDescription}
+              onChange={handleChange}
+              className={textareaClass}
+              rows={3}
+            />
+          </Field>
+
+          <Field label="Employer profile image">
+            <div className="space-y-3">
+              {avatarPreview && (
+                <img
+                  src={avatarPreview}
+                  alt="Profile preview"
+                  className="h-24 w-24 rounded-md border border-[#0f1115]/10 bg-[#f4f4f5] object-contain"
                 />
-              </div>
-            </>
-          )}
+              )}
 
-          <div className="flex justify-end gap-4 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium transition"
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold transition shadow-md"
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+              <input
+                type="file"
+                accept=".png,.jpg,.jpeg"
+                onChange={handleFileChange}
+                className={fileClass}
+              />
+            </div>
+          </Field>
+        </>
+      )}
+    </Modal>
   );
 };
 

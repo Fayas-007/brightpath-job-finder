@@ -1,9 +1,4 @@
-import {
-  FileText,
-  Mail,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { ArrowUp, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import BrandLogo from "../../../components/BrandLogo";
@@ -29,7 +24,7 @@ const footerGroups = {
     {
       title: "Support",
       links: [
-        { label: "Contact support", href: "mailto:support@brightpath.local" },
+        { label: "Contact support", href: "mailto:fayasshibly007@gmail.com" },
         { label: "Privacy", path: "/" },
         { label: "Terms", path: "/" },
       ],
@@ -40,6 +35,8 @@ const footerGroups = {
       title: "Career",
       links: [
         { label: "Find jobs", path: "/find-jobs" },
+        { label: "Applied jobs", path: "/applied-jobs" },
+        { label: "Saved jobs", path: "/saved-jobs" },
       ],
     },
     {
@@ -52,7 +49,7 @@ const footerGroups = {
     {
       title: "Support",
       links: [
-        { label: "Contact support", href: "mailto:support@brightpath.local" },
+        { label: "Contact support", href: "mailto:fayasshibly007@gmail.com" },
         { label: "Privacy", path: "/find-jobs" },
       ],
     },
@@ -77,7 +74,7 @@ const footerGroups = {
     {
       title: "Support",
       links: [
-        { label: "Contact support", href: "mailto:support@brightpath.local" },
+        { label: "Contact support", href: "mailto:fayasshibly007@gmail.com" },
         { label: "Hiring help", path: "/employer-dashboard" },
         { label: "Privacy", path: "/company-profile" },
       ],
@@ -86,93 +83,89 @@ const footerGroups = {
 };
 
 const footerCopy = {
-  public: {
-    eyebrow: "BrightPath",
-    text: "BrightPath keeps job discovery, hiring workflows, and applications clear from the first search to the final decision.",
-  },
-  jobseeker: {
-    eyebrow: "Job Seeker",
-    text: "Return to your search and keep your profile ready from one clean workspace.",
-  },
-  employer: {
-    eyebrow: "Employer",
-    text: "Post roles, review candidates, and keep company details ready for the people you want to reach.",
-  },
+  public:
+    "BrightPath keeps job discovery, hiring workflows, and applications clear from the first search to the final decision.",
+  jobseeker:
+    "Return to your search and keep your profile ready from one clean workspace.",
+  employer:
+    "Post roles, review candidates, and keep company details ready for the people you want to reach.",
 };
 
-const FooterLink = ({ item }) => {
-  const className =
-    "inline-flex w-fit items-center gap-2 text-sm font-semibold text-slate-600 transition-colors hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200";
+const linkClass =
+  "w-fit rounded-sm text-[15px] text-slate-600 transition-colors hover:text-[#1646e0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1646e0]";
 
-  if (item.href) {
-    return (
-      <a href={item.href} className={className}>
-        {item.label}
-      </a>
-    );
-  }
-
-  return (
-    <Link to={item.path} className={className}>
+const FooterLink = ({ item }) =>
+  item.href ? (
+    <a href={item.href} className={linkClass}>
+      {item.label}
+    </a>
+  ) : (
+    <Link to={item.path} className={linkClass}>
       {item.label}
     </Link>
   );
-};
 
 const Footer = () => {
   const { user, isAuthenticated } = useAuth();
+
   const role =
     isAuthenticated && (user?.role === "employer" || user?.role === "recruiter")
       ? "employer"
       : isAuthenticated && user?.role === "jobseeker"
       ? "jobseeker"
       : "public";
+
   const groups = footerGroups[role];
-  const copy = footerCopy[role];
 
   return (
-    <footer className="relative overflow-hidden border-t border-slate-200/80 bg-white/90 text-slate-900 shadow-sm backdrop-blur-xl">
+    <footer className="border-t border-[#0a1f6b]/10 bg-white text-[#0a1f6b]">
+      <div className="mx-auto max-w-[1920px] px-6 sm:px-10 lg:px-16 xl:px-24">
+        {/* Main */}
+        <div className="grid gap-12 py-14 lg:grid-cols-12 lg:gap-8">
+          {/* Brand */}
+          <div className="lg:col-span-4">
+            <div className="py-2">
+              <BrandLogo />
+            </div>
 
-      <div className="relative mx-auto max-w-screen-2xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[1fr_1.35fr]">
-          <div className="max-w-xl">
-            <div className="flex items-center gap-3">
-              <BrandLogo textClassName="text-[1.45rem]" iconClassName="h-8 w-8" />
-              <span className="inline-flex items-center gap-2 rounded-full bg-blue-50/80 px-3 py-1 text-xs font-bold uppercase text-blue-700 ring-1 ring-blue-100">
-                <Sparkles className="h-3.5 w-3.5 text-teal-500" />
-                {copy.eyebrow}
-              </span>
-            </div>
-            <p className="max-w-md text-sm leading-7 text-slate-600">
-              {copy.text}
+            <p className="mt-4 max-w-sm text-[15px] leading-7 text-slate-600">
+              {footerCopy[role]}
             </p>
-            <div className="mt-5 flex flex-wrap gap-3 text-sm font-semibold text-slate-600">
-              <a
-                href="mailto:support@brightpath.local"
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/75 px-3 py-2 transition-colors hover:border-blue-200 hover:text-blue-700"
-              >
-                <Mail className="h-4 w-4 text-blue-600" />
-                support@brightpath.local
-              </a>
-              <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/75 px-3 py-2">
-                <ShieldCheck className="h-4 w-4 text-teal-600" />
-                Secure workspace
-              </span>
-            </div>
+
+            <a
+              href="mailto:support@brightpath.lk"
+              className="mt-6 inline-flex items-center gap-2.5 rounded-sm text-sm font-semibold text-[#0a1f6b] transition-colors hover:text-[#1646e0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1646e0]"
+            >
+              <Mail className="h-4 w-4" />
+              support@brightpath.lk
+            </a>
           </div>
 
-          <nav className="grid gap-8 sm:grid-cols-3">
-            {groups.map((group) => (
+          {/* Link columns */}
+          <nav
+            aria-label="Footer"
+            className="grid gap-10 sm:grid-cols-3 sm:gap-0 lg:col-span-8"
+          >
+            {groups.map((group, index) => (
               <div
                 key={group.title}
-                className="border-t border-slate-200 pt-5 sm:border-l sm:border-t-0 sm:pl-7 sm:pt-0"
+                className="border-t border-[#0a1f6b]/10 pt-6 sm:border-l sm:border-t-0 sm:px-8 sm:pt-0"
               >
-                <h3 className="text-xs font-black uppercase text-slate-950">
-                  {group.title}
-                </h3>
-                <div className="mt-4 grid gap-3">
+                <div className="flex items-baseline gap-3">
+                  <span className="font-mono text-[11px] tracking-[0.18em] text-[#1646e0]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0a1f6b]">
+                    {group.title}
+                  </h3>
+                </div>
+
+                <div className="mt-6 grid gap-3.5">
                   {group.links.map((link) => (
-                    <FooterLink key={`${group.title}-${link.label}`} item={link} />
+                    <FooterLink
+                      key={`${group.title}-${link.label}`}
+                      item={link}
+                    />
                   ))}
                 </div>
               </div>
@@ -180,12 +173,20 @@ const Footer = () => {
           </nav>
         </div>
 
-        <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-5 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>Copyright {new Date().getFullYear()} BrightPath. All rights reserved.</p>
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Simple tools for focused hiring and job discovery.
-          </div>
+        {/* Bottom bar */}
+        <div className="flex flex-col gap-4 border-t border-[#0a1f6b]/10 py-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-mono text-xs tracking-wide text-slate-500">
+            © {new Date().getFullYear()} BrightPath. All rights reserved.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="inline-flex w-fit items-center gap-2 rounded-sm font-mono text-xs uppercase tracking-[0.16em] text-slate-500 transition-colors hover:text-[#1646e0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1646e0]"
+          >
+            Back to top
+            <ArrowUp className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     </footer>

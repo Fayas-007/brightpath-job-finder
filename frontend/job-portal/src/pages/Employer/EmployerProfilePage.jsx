@@ -1,15 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  BriefcaseBusiness,
-  CheckCircle2,
-  Edit3,
-  LogOut,
-  Mail,
-  Save,
-  ShieldCheck,
-  Upload,
-} from "lucide-react";
+import { Check, LogOut, Pencil, Save, Upload } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS, getAssetUrl as buildAssetUrl } from "../../utils/apiPaths";
@@ -24,6 +14,102 @@ import {
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import EditProfileDetails from "./EditProfileDetails";
 import BrandLogo from "../../components/BrandLogo";
+
+/*
+  Heading and type follow Manage jobs: pale panel, yellow-dot label,
+  Bricolage Grotesque display, Hanken Grotesk body. Navy is for text only.
+*/
+const DISPLAY_FONT = {
+  fontFamily: "'Bricolage Grotesque', 'Hanken Grotesk', system-ui, sans-serif",
+};
+const BODY_FONT = { fontFamily: "'Hanken Grotesk', system-ui, sans-serif" };
+
+const inputClass =
+  "min-h-11 w-full rounded-lg border border-[#0a1f6b]/15 bg-white px-4 text-sm text-[#0a1f6b] outline-none transition-colors placeholder:text-slate-400 hover:border-[#0a1f6b]/30 focus:border-[#1646e0] focus:ring-4 focus:ring-[#1646e0]/10";
+
+const secondaryButton =
+  "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#0a1f6b]/20 bg-white px-5 text-sm font-semibold text-[#0a1f6b] transition-colors hover:bg-[#eef3ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1646e0]";
+
+const primaryButton =
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#ffd23f] px-6 text-sm font-bold text-[#0a1f6b] transition-colors hover:bg-[#f5c400] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0a1f6b] disabled:cursor-not-allowed disabled:opacity-60";
+
+/* ---------------------------------------------
+   Building blocks
+--------------------------------------------- */
+
+const PageHeading = ({ label, title, description, action }) => (
+  <section className="relative overflow-hidden rounded-2xl border border-[#0a1f6b]/10 bg-[#f5f8ff] px-6 py-7 sm:px-9 sm:py-9">
+    <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+      <div className="max-w-2xl">
+        <div className="mb-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.13em] text-[#1646e0]">
+          <span className="h-2 w-2 rounded-full bg-[#ffd23f]" />
+          {label}
+        </div>
+
+        <h1
+          style={DISPLAY_FONT}
+          className="text-4xl font-bold leading-[1.05] tracking-normal text-[#0a1f6b] sm:text-5xl"
+        >
+          {title}
+        </h1>
+
+        <p className="mt-4 max-w-lg text-[15px] leading-6 text-slate-600">
+          {description}
+        </p>
+      </div>
+
+      {action}
+    </div>
+
+    <div className="pointer-events-none absolute -bottom-16 right-8 hidden h-56 w-56 rounded-full border-[32px] border-white/60 lg:block" />
+    <div className="pointer-events-none absolute -bottom-8 right-32 hidden h-28 w-28 rounded-full bg-[#ffd23f]/20 lg:block" />
+  </section>
+);
+
+const Field = ({ label, htmlFor, hint, children }) => (
+  <div>
+    <label
+      htmlFor={htmlFor}
+      className="mb-2 block text-sm font-semibold text-[#0a1f6b]"
+    >
+      {label}
+    </label>
+    {children}
+    {hint && <p className="mt-1.5 text-xs text-slate-500">{hint}</p>}
+  </div>
+);
+
+/* Logo with scanner-style corner marks */
+const LogoFrame = ({ src, size = "h-40 w-40" }) => (
+  <div className={`relative p-3 ${size}`}>
+    <span className="absolute left-0 top-0 h-4 w-4 border-l-2 border-t-2 border-[#1646e0]" />
+    <span className="absolute right-0 top-0 h-4 w-4 border-r-2 border-t-2 border-[#1646e0]" />
+    <span className="absolute bottom-0 left-0 h-4 w-4 border-b-2 border-l-2 border-[#1646e0]" />
+    <span className="absolute bottom-0 right-0 h-4 w-4 border-b-2 border-r-2 border-[#1646e0]" />
+    <img
+      src={src}
+      alt="Company logo"
+      className="h-full w-full rounded-md bg-white object-cover"
+    />
+  </div>
+);
+
+const DetailRow = ({ label, value }) => (
+  <div className="grid gap-1 px-6 py-5 sm:grid-cols-[170px_minmax(0,1fr)] sm:gap-6 sm:px-8">
+    <dt className="text-sm font-medium text-slate-500">{label}</dt>
+    <dd className="break-words text-[15px] font-semibold text-[#0a1f6b]">
+      {value}
+    </dd>
+  </div>
+);
+
+const Spinner = () => (
+  <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0a1f6b] border-t-transparent" />
+);
+
+/* ---------------------------------------------
+   Employer profile page
+--------------------------------------------- */
 
 const EmployerProfilePage = () => {
   const { user, updateUser, logout } = useAuth();
@@ -88,9 +174,13 @@ const EmployerProfilePage = () => {
       payload.append("companyDescription", formData.companyDescription || "");
       if (avatarFile) payload.append("avatar", avatarFile);
 
-      const response = await axiosInstance.put(API_PATHS.AUTH.UPDATE_PROFILE, payload, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const response = await axiosInstance.put(
+        API_PATHS.AUTH.UPDATE_PROFILE,
+        payload,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
 
       if (response.status === 200) {
         toast.success("Profile details updated successfully");
@@ -101,7 +191,10 @@ const EmployerProfilePage = () => {
         updateUser(response.data);
         setEditMode(false);
 
-        if (!isEmployerProfileComplete(user) && isEmployerProfileComplete(response.data)) {
+        if (
+          !isEmployerProfileComplete(user) &&
+          isEmployerProfileComplete(response.data)
+        ) {
           navigate("/employer-dashboard");
         }
       }
@@ -148,172 +241,209 @@ const EmployerProfilePage = () => {
   }, []);
 
   const profileComplete = isEmployerProfileComplete(profileData);
-  const setupProgress = [
-    Boolean(formData.companyName?.trim()),
-    Boolean(formData.companyDescription?.trim()),
-    Boolean(avatarFile || isValidAssetUrl(formData.avatar)),
-  ].filter(Boolean).length;
+
+  const setupSteps = [
+    {
+      label: "Company logo",
+      done: Boolean(avatarFile || isValidAssetUrl(formData.avatar)),
+    },
+    { label: "Company name", done: Boolean(formData.companyName?.trim()) },
+    {
+      label: "Company description",
+      done: Boolean(formData.companyDescription?.trim()),
+    },
+  ];
+  const setupProgress = setupSteps.filter((step) => step.done).length;
 
   if (loadingProfile) {
     return (
-      <div className="app-background app-background-employer flex min-h-screen items-center justify-center">
-        <p className="font-semibold text-slate-600">Loading company profile...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f8ff]">
+        <p className="font-medium text-slate-600">Loading company profile...</p>
       </div>
     );
   }
 
+  /* ---------- First-time setup ---------- */
   if (!profileComplete) {
-    const setupImage = imagePreview.avatar || getProfileAssetUrl(formData.avatar);
+    const setupImage =
+      imagePreview.avatar || getProfileAssetUrl(formData.avatar);
 
     return (
-      <div className="app-background app-background-employer min-h-screen text-slate-900">
-        <header className="employer-shell flex items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+      <div style={BODY_FONT} className="min-h-screen bg-white text-[#0a1f6b]">
+        <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
           <BrandLogo />
-          <button type="button" onClick={logout} className="employer-secondary-action px-3 py-2">
+          <button type="button" onClick={logout} className={secondaryButton}>
             <LogOut className="h-4 w-4" />
             Sign out
           </button>
         </header>
 
-        <main className="employer-shell grid min-h-[calc(100vh-84px)] items-center gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[0.82fr_1.18fr] lg:px-8">
-          <section className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-teal-100 bg-white/80 px-4 py-2 text-sm font-black text-teal-700 shadow-sm">
-              <ShieldCheck className="h-4 w-4" />
-              Employer setup
-            </div>
-            <div>
-              <h1 className="max-w-xl text-4xl font-black leading-tight text-slate-950 md:text-5xl">
-                Build your hiring identity first.
-              </h1>
-              <p className="mt-5 max-w-xl text-base leading-7 text-slate-600">
-                Add the company details candidates will see before you post a role. Your dashboard unlocks as soon as the profile is complete.
-              </p>
-            </div>
+        <main className="mx-auto w-full max-w-6xl space-y-7 px-4 pb-16 pt-2 sm:px-6 lg:px-8">
+          <PageHeading
+            label="Company setup"
+            title={
+              <>
+                Introduce your
+                <br className="hidden sm:block" /> company.
+              </>
+            }
+            description="Candidates see these details on every job you post. Complete all three to open your dashboard."
+          />
 
-            <div className="employer-card max-w-xl p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-black text-slate-950">Setup progress</p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {setupProgress} of 3 required details added
-                  </p>
-                </div>
-                <span className="rounded-full bg-teal-50 px-3 py-1 text-sm font-black text-teal-700">
-                  {Math.round((setupProgress / 3) * 100)}%
-                </span>
-              </div>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-teal-600 transition-all duration-500"
-                  style={{ width: `${(setupProgress / 3) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              {[
-                "Show a real company identity",
-                "Unlock job posting tools",
-                "Give applicants a clear first impression",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-lg border border-teal-100 bg-white/80 px-4 py-3 shadow-sm">
-                  <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-teal-600" />
-                  <span className="text-sm font-semibold text-slate-700">{item}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="employer-panel p-5 sm:p-7 lg:p-8">
-            <div className="flex flex-col gap-4 border-b border-slate-100 pb-6 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="employer-kicker">Company profile</p>
-                <h2 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">
-                  Complete your details
+          <div className="grid gap-7 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
+            {/* Progress */}
+            <section className="rounded-2xl border border-[#0a1f6b]/10 bg-white p-6">
+              <div className="flex items-baseline justify-between">
+                <h2
+                  style={DISPLAY_FONT}
+                  className="text-xl font-bold text-[#0a1f6b]"
+                >
+                  Your progress
                 </h2>
-                <p className="mt-2 text-sm text-slate-500">
-                  Keep it short, clear, and candidate friendly.
+                <p className="text-sm font-semibold text-slate-500">
+                  {setupProgress} of 3
                 </p>
               </div>
-              <div className="hidden rounded-lg bg-teal-50 p-3 text-teal-700 sm:block">
-                <BriefcaseBusiness className="h-6 w-6" />
-              </div>
-            </div>
 
-            <div className="grid gap-6 pt-6">
-              <div className="grid gap-4 sm:grid-cols-[96px_1fr] sm:items-center">
-                <img
-                  src={setupImage}
-                  alt="Company profile"
-                  className="h-24 w-24 rounded-lg border border-slate-200 bg-slate-50 object-cover shadow-sm"
-                />
-                <div>
-                  <label className="employer-secondary-action cursor-pointer">
-                    <Upload className="h-4 w-4" />
-                    Upload image
+              <div className="mt-4 grid grid-cols-3 gap-1.5">
+                {setupSteps.map((step) => (
+                  <span
+                    key={step.label}
+                    className={`h-1.5 rounded-full transition-colors ${
+                      step.done ? "bg-[#ffd23f]" : "bg-[#0a1f6b]/10"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <ol className="mt-5 divide-y divide-[#0a1f6b]/10">
+                {setupSteps.map((step) => (
+                  <li
+                    key={step.label}
+                    className="flex items-center gap-3 py-3.5"
+                  >
+                    <span
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                        step.done
+                          ? "bg-[#ffd23f] text-[#0a1f6b]"
+                          : "border-2 border-[#0a1f6b]/20"
+                      }`}
+                    >
+                      {step.done && (
+                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                      )}
+                    </span>
+                    <span
+                      className={`flex-1 text-[15px] ${
+                        step.done
+                          ? "font-semibold text-[#0a1f6b]"
+                          : "text-slate-600"
+                      }`}
+                    >
+                      {step.label}
+                    </span>
+                    <span className="text-xs font-medium text-slate-400">
+                      {step.done ? "Done" : "Required"}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+
+            {/* Form */}
+            <section className="overflow-hidden rounded-2xl border border-[#0a1f6b]/10 bg-white">
+              <header className="border-b border-[#0a1f6b]/10 px-6 py-5 sm:px-8">
+                <h2
+                  style={DISPLAY_FONT}
+                  className="text-2xl font-bold text-[#0a1f6b]"
+                >
+                  Company details
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Keep it short, clear and candidate friendly.
+                </p>
+              </header>
+
+              <div className="space-y-6 p-6 sm:p-8">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                  <LogoFrame src={setupImage} size="h-32 w-32" />
+                  <div>
+                    <label className={secondaryButton}>
+                      <Upload className="h-4 w-4" />
+                      Upload logo
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                    <p className="mt-2 text-xs text-slate-500">
+                      JPG, PNG or WebP, up to 5MB.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field label="Contact name" htmlFor="setup-name">
                     <input
-                      type="file"
-                      accept=".jpg,.jpeg,.png,.webp"
-                      onChange={handleImageChange}
-                      className="hidden"
+                      id="setup-name"
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) =>
+                        handleInputChange("name", e.target.value)
+                      }
+                      className={inputClass}
+                      placeholder="Your name"
                     />
-                  </label>
-                  <p className="mt-2 text-xs font-semibold text-slate-500">
-                    JPG, PNG, or WebP. Maximum 5MB.
-                  </p>
-                </div>
-              </div>
+                  </Field>
 
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700">Contact name</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    className="field-control"
-                    placeholder="Your name"
+                  <Field label="Company name" htmlFor="setup-company">
+                    <input
+                      id="setup-company"
+                      type="text"
+                      value={formData.companyName}
+                      onChange={(e) =>
+                        handleInputChange("companyName", e.target.value)
+                      }
+                      className={inputClass}
+                      placeholder="Company name"
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Company description" htmlFor="setup-description">
+                  <textarea
+                    id="setup-description"
+                    value={formData.companyDescription}
+                    onChange={(e) =>
+                      handleInputChange("companyDescription", e.target.value)
+                    }
+                    className={`${inputClass} min-h-40 resize-none py-3 leading-6`}
+                    placeholder="What do you build, who do you serve, and why should candidates want to join?"
                   />
-                </div>
+                </Field>
 
-                <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700">Company name</label>
-                  <input
-                    type="text"
-                    value={formData.companyName}
-                    onChange={(e) => handleInputChange("companyName", e.target.value)}
-                    className="field-control"
-                    placeholder="Company name"
-                  />
+                <div className="flex justify-end border-t border-[#0a1f6b]/10 pt-6">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className={primaryButton}
+                  >
+                    {saving ? <Spinner /> : <Save className="h-4 w-4" />}
+                    {saving ? "Saving..." : "Complete setup"}
+                  </button>
                 </div>
               </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">Company description</label>
-                <textarea
-                  value={formData.companyDescription}
-                  onChange={(e) => handleInputChange("companyDescription", e.target.value)}
-                  className="field-control min-h-36 resize-none"
-                  placeholder="What do you build, who do you serve, and why should candidates be excited to join?"
-                />
-              </div>
-
-              <button type="button" onClick={handleSave} disabled={saving} className="employer-action w-full sm:w-auto">
-                {saving ? (
-                  <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                {saving ? "Saving..." : "Complete setup"}
-                {!saving && <ArrowRight className="h-4 w-4" />}
-              </button>
-            </div>
-          </section>
+            </section>
+          </div>
         </main>
       </div>
     );
   }
 
+  /* ---------- Edit mode ---------- */
   if (editMode) {
     return (
       <EditProfileDetails
@@ -328,67 +458,92 @@ const EmployerProfilePage = () => {
     );
   }
 
+  /* ---------- Normal view ---------- */
   return (
     <DashboardLayout activeMenu="company-profile">
       {user && (
-        <div className="employer-shell mb-16">
-          <div className="employer-panel overflow-hidden">
-            <div className="flex flex-col gap-5 border-b border-slate-100 bg-white/70 px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-              <div>
-                <p className="employer-kicker">Company</p>
-                <h1 className="mt-2 text-3xl font-black text-slate-950">
-                  Employer profile
-                </h1>
-                <p className="mt-2 text-sm text-slate-500">
-                  The public identity attached to your jobs and candidate reviews.
-                </p>
-              </div>
-              <button onClick={() => setEditMode(true)} className="employer-action">
-                <Edit3 className="w-4 h-4" />
+        <div
+          style={BODY_FONT}
+          className="mx-auto w-full max-w-[1440px] space-y-7 pb-12"
+        >
+          <PageHeading
+            label="Company workspace"
+            title={
+              <>
+                Your company,
+                <br className="hidden sm:block" /> as candidates see it.
+              </>
+            }
+            description="This is what appears on every job you publish. Keep it accurate and up to date."
+            action={
+              <button
+                type="button"
+                onClick={() => setEditMode(true)}
+                className={`${primaryButton} self-start lg:self-auto`}
+              >
+                <Pencil className="h-4 w-4" />
                 Edit profile
               </button>
-            </div>
+            }
+          />
 
-            <div className="grid gap-8 p-5 sm:p-8 lg:grid-cols-[300px_1fr]">
-              <aside className="employer-card p-6">
-                <img
-                  src={getProfileAssetUrl(profileData.avatar)}
-                  alt="Company profile"
-                  className="h-24 w-24 rounded-lg border border-slate-200 bg-white object-cover shadow-sm"
-                />
-                <h2 className="mt-5 text-2xl font-black text-slate-950">
+          <section className="overflow-hidden rounded-2xl border border-[#0a1f6b]/10 bg-white">
+            <div className="grid lg:grid-cols-[340px_minmax(0,1fr)]">
+              {/* Identity */}
+              <div className="border-b border-[#0a1f6b]/10 p-6 sm:p-8 lg:border-b-0 lg:border-r">
+                <LogoFrame src={getProfileAssetUrl(profileData.avatar)} />
+
+                <h2
+                  style={DISPLAY_FONT}
+                  className="mt-7 break-words text-3xl font-bold leading-tight text-[#0a1f6b]"
+                >
                   {profileData.companyName || "Company profile"}
                 </h2>
-                <p className="mt-2 text-sm font-semibold text-teal-700">
-                  Employer account
-                </p>
-                <div className="mt-5 flex items-center text-sm text-slate-600">
-                  <Mail className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="break-all">{profileData.email}</span>
-                </div>
-              </aside>
+                <p className="mt-1 text-sm text-slate-500">Employer account</p>
 
-              <section className="space-y-6">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="employer-card p-5">
-                    <p className="text-xs font-bold uppercase text-slate-400">Contact name</p>
-                    <p className="mt-2 font-semibold text-slate-950">{profileData.name || "N/A"}</p>
-                  </div>
-                  <div className="employer-card p-5">
-                    <p className="text-xs font-bold uppercase text-slate-400">Company name</p>
-                    <p className="mt-2 font-semibold text-slate-950">{profileData.companyName || "N/A"}</p>
-                  </div>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#187447]">
+                  <span className="relative flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[#22965b]">
+                    <span className="absolute h-2.5 w-2.5 animate-ping rounded-full bg-[#22965b]/30" />
+                  </span>
+                  Visible on your job posts
+                </span>
+              </div>
+
+              {/* Content */}
+              <div className="min-w-0">
+                <div className="p-6 sm:p-8">
+                  <h3
+                    style={DISPLAY_FONT}
+                    className="text-xl font-bold text-[#0a1f6b]"
+                  >
+                    About the company
+                  </h3>
+
+                  {profileData.companyDescription ? (
+                    <p className="mt-3 max-w-[68ch] whitespace-pre-line text-[15px] leading-7 text-slate-700">
+                      {profileData.companyDescription}
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-sm text-slate-500">
+                      No description added yet.
+                    </p>
+                  )}
                 </div>
 
-                <div className="employer-card p-5 sm:p-6">
-                  <p className="text-xs font-bold uppercase text-slate-400">About company</p>
-                  <p className="mt-3 text-sm leading-7 text-slate-700">
-                    {profileData.companyDescription}
-                  </p>
-                </div>
-              </section>
+                <dl className="divide-y divide-[#0a1f6b]/10 border-t border-[#0a1f6b]/10 bg-[#fafbfe]">
+                  <DetailRow
+                    label="Contact name"
+                    value={profileData.name || "Not provided"}
+                  />
+                  <DetailRow
+                    label="Company name"
+                    value={profileData.companyName || "Not provided"}
+                  />
+                  <DetailRow label="Email address" value={profileData.email} />
+                </dl>
+              </div>
             </div>
-          </div>
+          </section>
         </div>
       )}
     </DashboardLayout>

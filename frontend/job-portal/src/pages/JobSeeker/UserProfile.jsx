@@ -68,6 +68,8 @@ const UserProfile = () => {
   });
 
   const [saving, setSaving] = useState(false);
+  // True once the user changes anything. Controls the Save button.
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -88,6 +90,7 @@ const UserProfile = () => {
             ? user.experience.map((exp) => ({ ...exp, id: Date.now() + Math.random() }))
             : [emptyExperience()],
       });
+      setDirty(false);
     }
   }, [user]);
 
@@ -120,8 +123,11 @@ const UserProfile = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const handleInputChange = (field, value) =>
+  // Every edit goes through here, so this is the only place that marks dirty.
+  const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    setDirty(true);
+  };
 
   const handleAddItem = (type) => {
     const emptyItem = type === "education" ? emptyEducation() : emptyExperience();
@@ -178,12 +184,24 @@ const UserProfile = () => {
     return cleanItem;
   };
 
+  // Create the preview URL once per picked file, and free it when it changes.
+  const avatarPreview = useMemo(
+    () =>
+      formData.avatar instanceof File
+        ? URL.createObjectURL(formData.avatar)
+        : "",
+    [formData.avatar]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    };
+  }, [avatarPreview]);
+
   const avatarSrc =
-    formData.avatar instanceof File
-      ? URL.createObjectURL(formData.avatar)
-      : formData.avatar
-      ? getAssetUrl(formData.avatar)
-      : "/default-avatar.png";
+    avatarPreview ||
+    (formData.avatar ? getAssetUrl(formData.avatar) : "/default-avatar.png");
 
   const handleSave = async () => {
     setSaving(true);
@@ -224,6 +242,7 @@ const UserProfile = () => {
 
       if (res.status === 200) {
         toast.success("Profile updated!");
+        setDirty(false);
         updateUser(res.data);
         navigate("/profile");
       }
@@ -241,7 +260,35 @@ const UserProfile = () => {
     <div className="page-with-footer app-background app-background-jobseeker">
       <Navbar />
       <main className="page-footer-main mx-auto max-w-6xl px-4 pb-16 pt-24 sm:px-6 lg:px-8">
-        <section className="overflow-hidden rounded-lg border border-blue-100 bg-white shadow-sm">
+        {/* overflow-clip keeps the rounded corners without breaking the sticky save bar */}
+        <section className="overflow-clip rounded-lg border border-blue-100 bg-white shadow-sm">
+          {/* Top save bar: shows up as soon as something changes, stays under the navbar while scrolling */}
+          {dirty && (
+            <div className="sticky top-20 z-20 flex items-center justify-between gap-3 border-b border-amber-200 bg-amber-50/95 px-4 py-3 backdrop-blur sm:px-6">
+              <p className="text-sm font-black text-amber-900">
+                You have unsaved changes
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => navigate("/profile")}
+                  className="rounded-lg border border-amber-200 bg-white px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-100"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4" />
+                  {saving ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="border-b border-blue-100 bg-gradient-to-r from-blue-50 via-white to-teal-50 px-5 py-6 sm:px-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center">
@@ -371,6 +418,7 @@ const UserProfile = () => {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <SectionHeader icon={GraduationCap} eyebrow="Background" title="Education" />
                       <button
+                        type="button"
                         onClick={() => handleAddItem("education")}
                         className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-black text-blue-700 hover:bg-blue-100"
                       >
@@ -409,6 +457,7 @@ const UserProfile = () => {
                             />
                           </div>
                           <button
+                            type="button"
                             onClick={() => handleRemoveItem("education", edu.id)}
                             className="mt-3 inline-flex items-center gap-2 text-sm font-black text-red-600 hover:text-red-700"
                           >
@@ -424,6 +473,7 @@ const UserProfile = () => {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <SectionHeader icon={BriefcaseBusiness} eyebrow="Work history" title="Experience" />
                       <button
+                        type="button"
                         onClick={() => handleAddItem("experience")}
                         className="inline-flex items-center justify-center gap-2 rounded-lg border border-teal-100 bg-teal-50 px-4 py-2 text-sm font-black text-teal-700 hover:bg-teal-100"
                       >
@@ -462,6 +512,7 @@ const UserProfile = () => {
                             />
                           </div>
                           <button
+                            type="button"
                             onClick={() => handleRemoveItem("experience", exp.id)}
                             className="mt-3 inline-flex items-center gap-2 text-sm font-black text-red-600 hover:text-red-700"
                           >
@@ -475,8 +526,14 @@ const UserProfile = () => {
                 </>
               )}
 
-              <div className="sticky bottom-4 z-10 flex flex-col-reverse gap-3 rounded-lg border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur sm:flex-row sm:justify-end">
+              {/* Sticky save bar */}
+              <div className="sticky bottom-4 z-10 flex flex-col-reverse gap-3 rounded-lg border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-end">
+                <p className="hidden text-sm font-semibold text-slate-500 sm:mr-auto sm:block">
+                  {dirty ? "You have unsaved changes" : "No changes yet"}
+                </p>
+
                 <button
+                  type="button"
                   onClick={() => navigate("/profile")}
                   className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
                 >
@@ -485,9 +542,10 @@ const UserProfile = () => {
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleSave}
-                  disabled={saving}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-50"
+                  disabled={saving || !dirty}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving ? (
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

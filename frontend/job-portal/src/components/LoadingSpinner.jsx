@@ -1,26 +1,53 @@
-import { Rocket } from "lucide-react";
+import { LoaderCircle, CheckCircle } from "lucide-react";
 
-const LoadingSpinner = () => {
+
+const LoadingSpinner = ({
+  message = "Finding your perfect opportunities...",
+}) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center px-4">
-      <div className="text-center relative">
-        <div className="relative inline-block">
-          <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-300 border-t-purple-500 mx-auto"></div>
-          <div className="absolute inset-0 flex animate-spin items-center justify-center [animation-duration:2s]">
-            <Rocket className="w-8 h-8 text-purple-600" />
-          </div>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4">
+      <div className="w-full max-w-sm bg-white border border-slate-200 p-8">
 
-        <p className="mt-6 animate-pulse font-medium text-gray-700">
-          Finding your perfect opportunities...
+        {/* Brand */}
+        <p className="text-xs font-semibold tracking-[0.14em] text-slate-400">
+          BRIGHT<span className="text-blue-600">PATH</span>
         </p>
 
-        <div className="flex justify-center mt-4 space-x-2">
-          <span className="h-2 w-2 animate-bounce rounded-full bg-purple-500" />
-          <span className="h-2 w-2 animate-bounce rounded-full bg-blue-500 [animation-delay:120ms]" />
-          <span className="h-2 w-2 animate-bounce rounded-full bg-pink-500 [animation-delay:240ms]" />
+        {/* Message */}
+        <div className="mt-10">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Just a moment<span className="text-blue-600">.</span>
+          </h2>
+
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            {message}
+          </p>
         </div>
+
+        {/* Progress */}
+        <div className="mt-9 h-[3px] w-full overflow-hidden bg-slate-100">
+          <div className="h-full w-1/3 animate-[loading_1.5s_ease-in-out_infinite] bg-blue-600" />
+        </div>
+
       </div>
+
+      <style>{`
+        @keyframes loading {
+          0% {
+            transform: translateX(-110%);
+          }
+          100% {
+            transform: translateX(320%);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .animate-\\[loading_1\\.5s_ease-in-out_infinite\\] {
+            animation: none !important;
+            width: 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 };

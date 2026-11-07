@@ -14,5 +14,10 @@ const applicationSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+applicationSchema.index({ job: 1 });
+// Find a jobseeker's applications, newest first.
+applicationSchema.index({ applicant: 1, createdAt: -1 });
 
+// Find a specific jobseeker's application for a job.
+applicationSchema.index({ job: 1, applicant: 1 }, { unique: true });
 module.exports = mongoose.model("Application", applicationSchema);

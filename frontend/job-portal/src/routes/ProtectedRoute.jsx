@@ -1,6 +1,6 @@
 import { useAuth } from "../context/AuthContext";
 import { Outlet, Navigate, useLocation } from "react-router-dom";
-import { isEmployerProfileComplete } from "../utils/helper";
+import { getHomePath, isEmployerProfileComplete } from "../utils/helper";
 
 const ProtectedRoute = ({ requiredRole }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -8,8 +8,11 @@ const ProtectedRoute = ({ requiredRole }) => {
 
   if (loading) return <div>Loading...</div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  // Wrong role: send them to their own home, not "/".
   if (requiredRole && user?.role !== requiredRole)
-    return <Navigate to="/" replace />;
+    return <Navigate to={getHomePath(user)} replace />;
+
   if (
     requiredRole === "employer" &&
     location.pathname !== "/company-profile" &&

@@ -1,14 +1,27 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Audiowide&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter+Tight:ital,wght@0,100..900;1,100..900&display=swap');
+
 @import "tailwindcss";
-/* Apply only to the logo */
+
+/* =========================================
+   THEME
+========================================= */
 
 @theme {
   --font-display: "Urbanist", sans-serif;
+  --font-editorial: "Archivo", sans-serif;
+  --font-interface: "Inter Tight", sans-serif;
+
   --breakpoint-3xl: 1920px;
   --color-primary: #00A7F3;
 }
+
+/* =========================================
+   BASE
+========================================= */
 
 @layer base {
   @keyframes fadeIn {
@@ -16,6 +29,7 @@
       opacity: 0;
       transform: translateY(0.75rem) scale(0.98);
     }
+
     to {
       opacity: 1;
       transform: translateY(0) scale(1);
@@ -24,15 +38,152 @@
 
   html {
     font-family: var(--font-display);
+    scroll-behavior: smooth;
   }
 
   body {
     background-color: #f8fafc;
     overflow-x: hidden;
   }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: rgba(0, 167, 243, 0.2);
+    color: #0f172a;
+  }
 }
 
+/* =========================================
+   COMPONENTS
+========================================= */
+
 @layer components {
+
+  /* -----------------------------------------
+     EDITORIAL TYPOGRAPHY
+     For the BrightPath landing page
+  ----------------------------------------- */
+
+  .editorial-page {
+    font-family: "Inter Tight", sans-serif;
+    background: #f4f5f3;
+    color: #111827;
+  }
+
+  .editorial-display {
+    font-family: "Archivo", sans-serif;
+    font-variation-settings: "wdth" 104, "wght" 650;
+    letter-spacing: -0.065em;
+    line-height: 0.91;
+  }
+
+  .editorial-display-light {
+    font-family: "Archivo", sans-serif;
+    font-variation-settings: "wdth" 100, "wght" 450;
+    letter-spacing: -0.055em;
+    line-height: 0.96;
+  }
+
+  .editorial-body {
+    font-family: "Inter Tight", sans-serif;
+    font-weight: 400;
+    letter-spacing: -0.015em;
+  }
+
+  .editorial-label {
+    font-family: "Inter Tight", sans-serif;
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .editorial-number {
+    font-family: "Archivo", sans-serif;
+    font-variation-settings: "wdth" 95, "wght" 600;
+    letter-spacing: -0.07em;
+    line-height: 0.9;
+  }
+
+  /* Editorial layout */
+
+  .editorial-container {
+    width: min(100% - 3rem, 1440px);
+    margin-inline: auto;
+  }
+
+  .editorial-divider {
+    height: 1px;
+    width: 100%;
+    background: rgba(15, 23, 42, 0.16);
+  }
+
+  .editorial-blue {
+    color: #00A7F3;
+  }
+
+  .editorial-dark {
+    background: #101827;
+    color: #f8fafc;
+  }
+
+  .editorial-outline-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    border: 1px solid rgba(15, 23, 42, 0.35);
+    padding: 0.9rem 1.35rem;
+    font-family: "Inter Tight", sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition:
+      background-color 0.25s ease,
+      color 0.25s ease,
+      border-color 0.25s ease;
+  }
+
+  .editorial-outline-button:hover {
+    background: #101827;
+    color: white;
+    border-color: #101827;
+  }
+
+  .editorial-primary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: #00A7F3;
+    color: #061321;
+    padding: 0.9rem 1.35rem;
+    font-family: "Inter Tight", sans-serif;
+    font-size: 0.875rem;
+    font-weight: 700;
+    transition:
+      background-color 0.25s ease,
+      transform 0.25s ease;
+  }
+
+  .editorial-primary-button:hover {
+    background: #38bdf8;
+    transform: translateY(-2px);
+  }
+
+  /* -----------------------------------------
+     APP BACKGROUNDS
+  ----------------------------------------- */
+
   .app-background {
     position: relative;
     min-height: 100vh;
@@ -41,6 +192,7 @@
     --app-bg-end: rgba(248, 250, 252, 0.93);
     --app-bg-accent-a: rgba(37, 99, 235, 0.12);
     --app-bg-accent-b: rgba(20, 184, 166, 0.10);
+
     background:
       linear-gradient(180deg, var(--app-bg-start), var(--app-bg-end)),
       var(--app-bg-image) center top / cover fixed;
@@ -75,9 +227,11 @@
     position: fixed;
     inset: 0;
     pointer-events: none;
+
     background:
       radial-gradient(circle at 18% 16%, var(--app-bg-accent-a), transparent 28%),
       radial-gradient(circle at 86% 10%, var(--app-bg-accent-b), transparent 30%);
+
     z-index: 0;
   }
 
@@ -85,6 +239,10 @@
     position: relative;
     z-index: 1;
   }
+
+  /* -----------------------------------------
+     GENERAL PANELS
+  ----------------------------------------- */
 
   .page-panel {
     border: 1px solid rgb(226 232 240);
@@ -103,6 +261,12 @@
     flex: 1 0 auto;
     min-height: calc(100vh - 4rem);
   }
+.page-footer-main {
+  padding-top: 4px;
+}
+  /* -----------------------------------------
+     BRAND
+  ----------------------------------------- */
 
   .brand-wordmark {
     display: inline-block;
@@ -112,11 +276,22 @@
     line-height: 1.25;
     padding-block: 0.08em;
     color: transparent;
-    background: linear-gradient(92deg, #0f172a 0%, #1d4ed8 54%, #0f766e 100%);
+
+    background: linear-gradient(
+      92deg,
+      #0f172a 0%,
+      #1d4ed8 54%,
+      #0f766e 100%
+    );
+
     background-clip: text;
     -webkit-background-clip: text;
     text-rendering: geometricPrecision;
   }
+
+  /* -----------------------------------------
+     FORM CONTROLS
+  ----------------------------------------- */
 
   .field-control {
     width: 100%;
@@ -128,7 +303,11 @@
     font-weight: 500;
     color: rgb(15 23 42);
     outline: none;
-    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
   .field-control:focus {
@@ -136,6 +315,10 @@
     background: white;
     box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
   }
+
+  /* -----------------------------------------
+     EMPLOYER LAYOUT
+  ----------------------------------------- */
 
   .employer-shell {
     width: min(100%, 1180px);
@@ -177,7 +360,11 @@
     font-weight: 800;
     color: white;
     box-shadow: 0 10px 24px rgba(15, 118, 110, 0.18);
-    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+
+    transition:
+      background-color 0.2s ease,
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
   .employer-action:hover {
@@ -203,7 +390,11 @@
     font-size: 0.875rem;
     font-weight: 800;
     color: rgb(51 65 85);
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease;
   }
 
   .employer-secondary-action:hover {
@@ -212,23 +403,9 @@
     color: rgb(15 118 110);
   }
 
-  @media (max-width: 767px) {
-    .app-background {
-      background:
-        linear-gradient(180deg, var(--app-bg-start), var(--app-bg-end)),
-        var(--app-bg-image) center top / cover scroll;
-    }
-
-    .employer-panel,
-    .employer-card {
-      border-radius: 0.625rem;
-    }
-
-    .employer-action,
-    .employer-secondary-action {
-      min-height: 2.75rem;
-    }
-  }
+  /* -----------------------------------------
+     TABLE
+  ----------------------------------------- */
 
   .soft-table {
     width: 100%;
@@ -256,28 +433,67 @@
   .soft-table tbody tr:hover {
     background: rgb(248 250 252);
   }
+
+  /* -----------------------------------------
+     RESPONSIVE
+  ----------------------------------------- */
+
+  @media (max-width: 767px) {
+    .app-background {
+      background:
+        linear-gradient(180deg, var(--app-bg-start), var(--app-bg-end)),
+        var(--app-bg-image) center top / cover scroll;
+    }
+
+    .employer-panel,
+    .employer-card {
+      border-radius: 0.625rem;
+    }
+
+    .employer-action,
+    .employer-secondary-action {
+      min-height: 2.75rem;
+    }
+
+    .editorial-container {
+      width: min(100% - 2rem, 1440px);
+    }
+
+    .editorial-display {
+      letter-spacing: -0.055em;
+    }
+  }
 }
 
+/* =========================================
+   LOGO FONT
+========================================= */
+
 .logo-font {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: "Bebas Neue", sans-serif;
 }
+
+/* =========================================
+   SEARCH
+========================================= */
+
 .search-input {
   width: 100%;
-  padding: 0.625rem 1rem 0.625rem 3rem; /* space for icon */
-  border: 1px solid #d1d5db; /* gray-300 */
-  border-radius: 1rem; /* rounded-xl */
+  padding: 0.625rem 1rem 0.625rem 3rem;
+  border: 1px solid #d1d5db;
+  border-radius: 1rem;
   outline: none;
   font-size: 1rem;
-  background-color: rgba(255, 255, 255, 0.8); /* semi-transparent */
+  background-color: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(5px);
 }
 
-/* Style the placeholder */
 .search-input::placeholder {
-  color: #9ca3af; /* gray-400 */
+  color: #9ca3af;
   font-style: italic;
-  opacity: 1; /* ensure visible */
+  opacity: 1;
 }
+
 .search-header {
   background-color: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(15px);
@@ -296,7 +512,7 @@
 }
 
 .search-header p {
-  color: #6b7280; /* gray-600 */
+  color: #6b7280;
   font-size: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -307,7 +523,7 @@
   gap: 1rem;
 }
 
-@media(min-width: 1024px) {
+@media (min-width: 1024px) {
   .search-header .search-bar {
     flex-direction: row;
     gap: 1.5rem;
@@ -368,4 +584,19 @@
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
   background: linear-gradient(90deg, #2563eb, #1d4ed8);
+}
+
+/* =========================================
+   REDUCED MOTION
+========================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

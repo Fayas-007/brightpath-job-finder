@@ -1,6 +1,6 @@
 import axios from "axios";
 import { BASE_URL } from "./apiPaths";
-import { logoutUser } from "./authUtils"; // helper for logging out
+import { logoutUser } from "./authUtils";
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -14,10 +14,21 @@ const axiosInstance = axios.create({
 // Request Interceptor
 axiosInstance.interceptors.request.use(
   (config) => {
-    const accessToken = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const accessToken =
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token");
+
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
+
+    // Let Axios/browser set the correct multipart boundary for file uploads.
+    if (config.data instanceof FormData) {
+      config.headers.delete
+        ? config.headers.delete("Content-Type")
+        : delete config.headers["Content-Type"];
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -31,7 +42,6 @@ axiosInstance.interceptors.response.use(
       const status = error.response.status;
 
       if (status === 401) {
-        // Only logout if not already on login page
         if (window.location.pathname !== "/") {
           logoutUser();
         }

@@ -2,6 +2,7 @@ const Application = require("../models/Application");
 const Job = require("../models/Job");
 const Notification = require("../models/Notification");
 const SavedJob = require("../models/SavedJob");
+const { deleteUploadedFile } = require("./uploadPath");
 
 const deleteJobsAndRelatedData = async (jobFilter) => {
   const jobs = await Job.find(jobFilter).select("_id").lean();
@@ -43,6 +44,7 @@ const deleteUserRelatedData = async (user) => {
     const applications = await Application.find({ applicant: user._id })
       .select("_id")
       .lean();
+
     const applicationIds = applications.map((application) => application._id);
 
     await Promise.all([
@@ -61,7 +63,17 @@ const deleteUserRelatedData = async (user) => {
       $or: [{ recipient: user._id }, { actor: user._id }],
     });
   }
+
+  // Delete the user's Cloudinary avatar, if one exists.
+  if (user.avatar) {
+    try {
+      await deleteUploadedFile(user.avatar);
+    } catch (error) {
+      console.error("Failed to delete user avatar:", error.message);
+    }
+  }
 };
+
 
 module.exports = {
   deleteJobsAndRelatedData,

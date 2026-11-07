@@ -1,6 +1,13 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 import axiosInstance from "../../utils/axiosInstance";
+import {
+  Field,
+  Modal,
+  fileClass,
+  inputClass,
+  textareaClass,
+} from "../../components/common/ModalKit";
 
 const CreateUserModal = ({ onClose, onCreate }) => {
   const [formData, setFormData] = useState({
@@ -56,103 +63,101 @@ const CreateUserModal = ({ onClose, onCreate }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 mx-4 transform scale-100 animate-fade-in">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
-          Create User
-        </h2>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <input
-            type="text"
-            name="name"
-            placeholder="Full Name"
-            value={formData.name}
-            onChange={handleChange}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-            required
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email Address"
-            value={formData.email}
-            onChange={handleChange}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-            required
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-            required
-          />
-          <select
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-            required
-          >
-            <option value="admin">Admin</option>
-            <option value="jobseeker">Job Seeker</option>
-            <option value="employer">Employer</option>
-          </select>
+    <Modal
+      label="Users"
+      title="Create user"
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      submitText={saving ? "Creating..." : "Create user"}
+      submitting={saving}
+    >
+      <Field label="Full name" required>
+        <input
+          type="text"
+          name="name"
+          placeholder="Full name"
+          value={formData.name}
+          onChange={handleChange}
+          className={inputClass}
+          required
+        />
+      </Field>
 
-          {formData.role === "employer" && (
-            <>
-              <input
-                type="text"
-                name="companyName"
-                placeholder="Company Name"
-                value={formData.companyName}
-                onChange={handleChange}
-                className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-                required
-              />
-              <textarea
-                name="companyDescription"
-                placeholder="Company Description"
-                value={formData.companyDescription}
-                onChange={handleChange}
-                className="border border-gray-300 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all resize-none"
-                rows={3}
-                required
-              />
-              <label className="text-sm font-semibold text-gray-700">
-                Employer profile image
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="border border-gray-300 px-4 py-2 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none placeholder-gray-400 transition-all"
-              />
-            </>
-          )}
+      <Field label="Email address" required>
+        <input
+          type="email"
+          name="email"
+          placeholder="name@example.com"
+          value={formData.email}
+          onChange={handleChange}
+          className={inputClass}
+          required
+        />
+      </Field>
 
-          <div className="flex justify-end gap-4 mt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium transition"
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold transition shadow-md"
-              disabled={saving}
-            >
-              {saving ? "Creating..." : "Create User"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      <Field label="Password" required>
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          value={formData.password}
+          onChange={handleChange}
+          className={inputClass}
+          required
+        />
+      </Field>
+
+      <Field label="Role" required>
+        <select
+          name="role"
+          value={formData.role}
+          onChange={handleChange}
+          className={inputClass}
+          required
+        >
+          <option value="admin">Admin</option>
+          <option value="jobseeker">Job Seeker</option>
+          <option value="employer">Employer</option>
+        </select>
+      </Field>
+
+      {formData.role === "employer" && (
+        <>
+          <Field label="Company name" required>
+            <input
+              type="text"
+              name="companyName"
+              placeholder="Company name"
+              value={formData.companyName}
+              onChange={handleChange}
+              className={inputClass}
+              required
+            />
+          </Field>
+
+          <Field label="Company description" required>
+            <textarea
+              name="companyDescription"
+              placeholder="What the company does"
+              value={formData.companyDescription}
+              onChange={handleChange}
+              className={textareaClass}
+              rows={3}
+              required
+            />
+          </Field>
+
+          <Field label="Employer profile image">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className={fileClass}
+            />
+          </Field>
+        </>
+      )}
+    </Modal>
   );
 };
 

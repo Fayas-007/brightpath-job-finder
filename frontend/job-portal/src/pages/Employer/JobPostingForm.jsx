@@ -1,23 +1,132 @@
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import { useState, useEffect } from "react";
-import { AlertCircle, MapPin, Briefcase, Users, Eye, Send } from "lucide-react";
+import { Eye, Send, AlertCircle } from "lucide-react";
 import { API_PATHS } from "../../utils/apiPaths";
 import { useLocation, useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axiosInstance";
 import { CATEGORIES, JOB_TYPES } from "../../utils/data";
 import toast from "react-hot-toast";
-import InputField from "../../components/Input/InputField";
-import SelectField from "../../components/Input/SelectField";
-import TextareaField from "../../components/Input/TextareaField";
 import JobPostingPreview from "../../components/Cards/JobPostingPreview";
 import { isEmployerProfileComplete } from "../../utils/helper";
+
+/*
+  60-30-10: white + #f5f8ff (60), navy text/headings (30),
+  yellow on the one primary action (10). Red is reserved for
+  required-field stars and errors.
+*/
+
+/*
+  Fonts. Add once to index.html <head>:
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  Bricolage Grotesque: headings (tight, characterful, optical sizing).
+  Hanken Grotesk: labels, inputs and body (open, very readable at 15-16px).
+*/
+const DISPLAY_FONT = {
+  fontFamily: "'Bricolage Grotesque', 'Hanken Grotesk', system-ui, sans-serif",
+};
+const BODY_FONT = {
+  fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+};
+
+const FOCUS =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1646e0]";
+
+const REQUIRED_KEYS = [
+  "jobTitle",
+  "location",
+  "category",
+  "jobType",
+  "description",
+  "requirements",
+];
+
+// Order used to send focus to the first field with an error.
+const FIELD_ORDER = [...REQUIRED_KEYS, "salary"];
+
+const inputClass = (hasError) =>
+  `w-full rounded-lg border bg-white px-4 py-3 text-base leading-6 text-[#0a1f6b] placeholder:text-slate-400 transition-colors focus:outline-none focus:ring-4 ${
+    hasError
+      ? "border-red-400 focus:border-red-500 focus:ring-red-100"
+      : "border-[#0a1f6b]/20 hover:border-[#0a1f6b]/40 focus:border-[#1646e0] focus:ring-[#1646e0]/15"
+  }`;
+
+/* ---------- Building blocks ---------- */
+
+const RequiredStar = () => (
+  <>
+    <span aria-hidden="true" className="text-lg font-bold leading-none text-red-600">
+      *
+    </span>
+    <span className="sr-only">(required)</span>
+  </>
+);
+
+const FieldError = ({ children }) => (
+  <p
+    role="alert"
+    className="mt-2 flex items-center gap-1.5 text-sm font-medium text-red-600"
+  >
+    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+    {children}
+  </p>
+);
+
+// `id` links the label to a single input. Pass `labelId` instead for groups.
+const Field = ({ id, labelId, label, required, optional, error, hint, children }) => {
+  const Label = id ? "label" : "span";
+
+  return (
+    <div>
+      <Label
+        id={labelId}
+        htmlFor={id}
+        className="mb-2 flex items-center gap-1 text-[15px] font-semibold text-[#0a1f6b]"
+      >
+        {label}
+        {required && <RequiredStar />}
+        {optional && (
+          <span className="ml-1 text-[13px] font-medium text-slate-500">
+            Optional
+          </span>
+        )}
+      </Label>
+
+      {children}
+
+      {hint && !error && (
+        <p className="mt-2 text-sm leading-5 text-slate-500">{hint}</p>
+      )}
+      {error && <FieldError>{error}</FieldError>}
+    </div>
+  );
+};
+
+// Title and help text on the left, fields on the right (stacked on mobile).
+const Section = ({ title, description, children }) => (
+  <section className="grid gap-6 px-6 py-8 sm:px-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
+    <div>
+      <h2 style={DISPLAY_FONT} className="text-xl font-semibold leading-7 tracking-[-0.015em] text-[#0a1f6b]">
+        {title}
+      </h2>
+      <p className="mt-1.5 text-[15px] leading-6 text-slate-500">{description}</p>
+    </div>
+
+    <div className="grid content-start gap-6">{children}</div>
+  </section>
+);
+
+/* ---------- Page ---------- */
 
 const JobPostingForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const jobId = location.state?.jobId || null; // null if creating a new job
 
-  const [user, setUser] = useState(null); // company info (from logged-in user)
+  const [user, setUser] = useState(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [formData, setFormData] = useState({
     jobTitle: "",
     location: "",
@@ -41,8 +150,12 @@ const JobPostingForm = () => {
         setUser(response.data);
       } catch (err) {
         console.error("Failed to fetch user:", err);
+        setUser(null);
+      } finally {
+        setIsProfileLoading(false);
       }
     };
+
     fetchUser();
   }, []);
 
@@ -52,7 +165,9 @@ const JobPostingForm = () => {
 
     const fetchJobDetails = async () => {
       try {
-        const response = await axiosInstance.get(API_PATHS.JOBS.GET_JOB_BY_ID(jobId));
+        const response = await axiosInstance.get(
+          API_PATHS.JOBS.GET_JOB_BY_ID(jobId)
+        );
         const jobData = response.data;
 
         if (jobData) {
@@ -76,35 +191,69 @@ const JobPostingForm = () => {
     fetchJobDetails();
   }, [jobId]);
 
-  // Check if company profile is complete
   const hasCompanyDetails = () => isEmployerProfileComplete(user);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+    if (errors.salary && (field === "salaryMin" || field === "salaryMax")) {
+      setErrors((prev) => ({ ...prev, salary: "" }));
+    }
   };
 
   const validateForm = (data) => {
     const errors = {};
-    if (!data.jobTitle.trim()) errors.jobTitle = "Job title is required";
-    if (!data.location.trim()) errors.location = "Location is required";
-    if (!data.category) errors.category = "Please select a category";
-    if (!data.jobType) errors.jobType = "Please select a job type";
-    if (!data.description.trim()) errors.description = "Job description is required";
-    if (!data.requirements.trim()) errors.requirements = "Job requirements are required";
+    if (!data.jobTitle.trim()) errors.jobTitle = "Enter a job title";
+    if (!data.location.trim()) errors.location = "Enter a location";
+    if (!data.category) errors.category = "Select a category";
+    if (!data.jobType) errors.jobType = "Select a job type";
+    if (!data.description.trim())
+      errors.description = "Enter a job description";
+    if (!data.requirements.trim())
+      errors.requirements = "Enter the job requirements";
 
     const hasMinSalary = data.salaryMin !== "";
     const hasMaxSalary = data.salaryMax !== "";
 
     if (hasMinSalary !== hasMaxSalary)
-      errors.salary = "Enter both minimum and maximum salary, or leave both blank";
+      errors.salary =
+        "Enter both minimum and maximum salary, or leave both blank";
     else if (hasMinSalary && Number(data.salaryMin) >= Number(data.salaryMax))
       errors.salary = "Maximum salary must be greater than minimum salary";
 
     return errors;
   };
 
-  const isFormValid = () => Object.keys(validateForm(formData)).length === 0 && hasCompanyDetails();
+  // Shows errors and moves focus to the first one.
+  const flagErrors = (nextErrors) => {
+    setErrors(nextErrors);
+    toast.error("Fix the highlighted fields.");
+
+    const first = FIELD_ORDER.find((key) => nextErrors[key]);
+    const target = document.getElementById(
+      first === "salary" ? "salaryMin" : first
+    );
+
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.focus?.({ preventScroll: true });
+    }
+  };
+
+  const handlePreview = () => {
+    if (!hasCompanyDetails()) {
+      toast.error("Complete your company profile before posting a job.");
+      return;
+    }
+
+    const nextErrors = validateForm(formData);
+    if (Object.keys(nextErrors).length > 0) {
+      flagErrors(nextErrors);
+      return;
+    }
+
+    setIsPreview(true);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -116,13 +265,12 @@ const JobPostingForm = () => {
     }
 
     const nextErrors = validateForm(formData);
-    setErrors(nextErrors);
-
     if (Object.keys(nextErrors).length > 0) {
-      toast.error("Please fix the highlighted fields.");
+      flagErrors(nextErrors);
       return;
     }
 
+    setErrors({});
     setIsSubmitting(true);
 
     const payload = {
@@ -147,11 +295,23 @@ const JobPostingForm = () => {
       navigate("/manage-jobs");
     } catch (err) {
       console.error("Job submission failed:", err);
-      toast.error(err?.response?.data?.message || "Failed to post or update job");
+      toast.error(
+        err?.response?.data?.message || "Failed to post or update job"
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (isProfileLoading) {
+    return (
+      <DashboardLayout activeMenu="post-job">
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#1646e0] border-t-transparent" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (isPreview)
     return (
@@ -160,182 +320,277 @@ const JobPostingForm = () => {
       </DashboardLayout>
     );
 
+  const filledCount = REQUIRED_KEYS.filter((key) =>
+    String(formData[key]).trim()
+  ).length;
+  const allFilled = filledCount === REQUIRED_KEYS.length;
+
   return (
     <DashboardLayout activeMenu="post-job">
-      <div className="employer-shell mb-16">
-        <div className="employer-panel overflow-hidden">
-          <div className="grid gap-8 p-5 sm:p-8 lg:grid-cols-[1fr_300px]">
-            <section>
-              <div className="flex flex-col gap-4 border-b border-slate-100 pb-6 sm:flex-row sm:items-center sm:justify-between">
+      <div style={BODY_FONT} className="mx-auto w-full max-w-4xl pb-16">
+        {/* Header */}
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1
+              style={DISPLAY_FONT}
+              className="text-4xl font-bold leading-[1.05] tracking-[-0.03em] text-[#0a1f6b] sm:text-5xl"
+            >
+              {jobId ? "Edit job" : "Post a job"}
+            </h1>
+            <p className="mt-3 text-base text-slate-600">
+              Fields marked with{" "}
+              <span aria-hidden="true" className="font-bold text-red-600">
+                *
+              </span>
+              <span className="sr-only">an asterisk</span> are required.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handlePreview}
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#0a1f6b]/25 bg-white px-5 text-[15px] font-semibold text-[#0a1f6b] transition-colors hover:bg-[#eef3ff] ${FOCUS}`}
+          >
+            <Eye className="h-4 w-4" />
+            Preview
+          </button>
+        </div>
+
+        {/* Company profile warning */}
+        {!hasCompanyDetails() && (
+          <div className="mt-6 flex flex-col gap-4 rounded-xl border border-[#ffd23f] bg-[#fff8dc] p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#0a1f6b]" />
               <div>
-                <p className="employer-kicker">Job editor</p>
-                <h2 className="mt-2 text-3xl font-black text-slate-950">
-                  {jobId ? "Edit Job" : "Post a Job"}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Write a clear role, check the preview, then publish when it is ready.
+                <p className="font-bold text-[#0a1f6b]">
+                  Complete your company profile to publish
+                </p>
+                <p className="mt-0.5 text-[15px] text-[#0a1f6b]/75">
+                  Candidates need to see who is hiring.
                 </p>
               </div>
-              <button
-                onClick={() => setIsPreview(true)}
-                disabled={!isFormValid()}
-                className="employer-secondary-action"
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </button>
             </div>
 
-            {!hasCompanyDetails() && (
-              <div className="my-6 flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                <span>Complete your company profile before posting a job.</span>
-                <button
-                  type="button"
-                  onClick={() => navigate("/company-profile")}
-                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700"
-                >
-                  Complete Profile
-                </button>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => navigate("/company-profile")}
+              className="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-lg bg-[#0a1f6b] px-5 text-[15px] font-semibold text-white transition-colors hover:bg-[#1646e0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0a1f6b]"
+            >
+              Complete profile
+            </button>
+          </div>
+        )}
 
-            {/* Form Fields */}
-            <div className="space-y-6 pt-6">
-              <InputField
-                label="Job Title"
-                placeholder="Senior Frontend Developer"
+        {/* Form */}
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="mt-6 divide-y divide-[#0a1f6b]/10 rounded-2xl border border-[#0a1f6b]/10 bg-white"
+        >
+          <Section
+            title="Role"
+            description="What the job is and where it is based."
+          >
+            <Field id="jobTitle" label="Job title" required error={errors.jobTitle}>
+              <input
+                id="jobTitle"
+                type="text"
                 value={formData.jobTitle}
                 onChange={(e) => handleInputChange("jobTitle", e.target.value)}
-                error={errors.jobTitle}
-                icon={Briefcase}
-                required
+                placeholder="e.g. Senior Frontend Developer"
+                aria-invalid={Boolean(errors.jobTitle)}
+                className={inputClass(errors.jobTitle)}
               />
+            </Field>
 
-              <InputField
-                label="Location"
-                placeholder="e.g., Colombo, Sri Lanka"
-                value={formData.location}
-                onChange={(e) => handleInputChange("location", e.target.value)}
-                error={errors.location}
-                icon={MapPin}
-              />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <Field id="location" label="Location" required error={errors.location}>
+                <input
+                  id="location"
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => handleInputChange("location", e.target.value)}
+                  placeholder="e.g. Colombo, Sri Lanka"
+                  aria-invalid={Boolean(errors.location)}
+                  className={inputClass(errors.location)}
+                />
+              </Field>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <SelectField
-                  label="Category"
+              <Field id="category" label="Category" required error={errors.category}>
+                <select
+                  id="category"
                   value={formData.category}
                   onChange={(e) => handleInputChange("category", e.target.value)}
-                  options={CATEGORIES}
-                  placeholder="Select a category"
-                  error={errors.category}
-                  icon={Users}
-                  required
-                />
-                <SelectField
-                  label="Job Type"
-                  value={formData.jobType}
-                  onChange={(e) => handleInputChange("jobType", e.target.value)}
-                  options={JOB_TYPES}
-                  placeholder="Select job type"
-                  error={errors.jobType}
-                  icon={Briefcase}
-                  required
-                />
-              </div>
+                  aria-invalid={Boolean(errors.category)}
+                  className={inputClass(errors.category)}
+                >
+                  <option value="">Select a category</option>
+                  {CATEGORIES.map((category) => (
+                    <option key={category.value} value={category.value}>
+                      {category.value}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
 
-              <TextareaField
-                label="Job Description"
-                placeholder="Outline responsibilities, daily tasks, and role highlights..."
+            <Field
+              labelId="jobType-label"
+              label="Job type"
+              required
+              error={errors.jobType}
+            >
+              <div
+                id="jobType"
+                role="radiogroup"
+                aria-labelledby="jobType-label"
+                tabIndex={-1}
+                className="flex flex-wrap gap-2 focus:outline-none"
+              >
+                {JOB_TYPES.map((type) => {
+                  const selected = formData.jobType === type.value;
+
+                  return (
+                    <button
+                      key={type.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => handleInputChange("jobType", type.value)}
+                      className={`min-h-11 rounded-lg border px-4 text-[15px] font-semibold transition-colors ${FOCUS} ${
+                        selected
+                          ? "border-[#0a1f6b] bg-[#0a1f6b] text-white"
+                          : errors.jobType
+                          ? "border-red-400 bg-white text-[#0a1f6b] hover:bg-[#eef3ff]"
+                          : "border-[#0a1f6b]/20 bg-white text-[#0a1f6b] hover:border-[#0a1f6b]/40 hover:bg-[#eef3ff]"
+                      }`}
+                    >
+                      {type.value}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          </Section>
+
+          <Section
+            title="Details"
+            description="What the person will do and what you need from them."
+          >
+            <Field
+              id="description"
+              label="Job description"
+              required
+              error={errors.description}
+              hint="Key responsibilities and what a normal week looks like."
+            >
+              <textarea
+                id="description"
                 value={formData.description}
                 onChange={(e) => handleInputChange("description", e.target.value)}
-                error={errors.description}
-                helperText="Include key responsibilities and expectations"
-                required
+                placeholder="Outline responsibilities, daily tasks and role highlights..."
+                aria-invalid={Boolean(errors.description)}
+                className={`${inputClass(errors.description)} min-h-40 resize-y leading-6`}
               />
+            </Field>
 
-              <TextareaField
-                label="Requirements"
-                placeholder="e.g., Required skills, experience, education..."
+            <Field
+              id="requirements"
+              label="Requirements"
+              required
+              error={errors.requirements}
+              hint="Required skills, qualifications and preferred experience."
+            >
+              <textarea
+                id="requirements"
                 value={formData.requirements}
-                onChange={(e) => handleInputChange("requirements", e.target.value)}
-                error={errors.requirements}
-                helperText="Specify required skills, qualifications, and preferred experience"
-                required
+                onChange={(e) =>
+                  handleInputChange("requirements", e.target.value)
+                }
+                placeholder="e.g. 2+ years with React, comfortable with REST APIs..."
+                aria-invalid={Boolean(errors.requirements)}
+                className={`${inputClass(errors.requirements)} min-h-40 resize-y leading-6`}
               />
+            </Field>
+          </Section>
 
-             {/* Salary Fields */}
-<div className="space-y-2">
-  <label className="block text-sm font-medium text-gray-700">
-    Salary Range (Optional)
-  </label>
-  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-    {["Min", "Max"].map((type, idx) => (
-      <div key={idx} className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-          LKR
-        </div>
-        <input
-          type="number"
-          placeholder={`${type} salary (LKR)`}
-          value={type === "Min" ? formData.salaryMin : formData.salaryMax}
-          onChange={(e) =>
-            handleInputChange(
-              type === "Min" ? "salaryMin" : "salaryMax",
-              e.target.value
-            )
-          }
-          className="w-full pl-12 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm hover:shadow-md"
-        />
-      </div>
-    ))}
-  </div>
-  {errors.salary && (
-    <div className="flex items-center text-sm text-red-600 mt-1">
-      <AlertCircle className="h-4 w-4 mr-1" />
-      {errors.salary}
-    </div>
-  )}
-</div>
+          <Section
+            title="Pay"
+            description="Optional. Add both amounts, or leave both blank."
+          >
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {[
+                ["Minimum salary", "salaryMin"],
+                ["Maximum salary", "salaryMax"],
+              ].map(([label, key]) => (
+                <Field key={key} id={key} label={label} optional>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-[15px] font-semibold text-slate-500">
+                      LKR
+                    </span>
+                    <input
+                      id={key}
+                      type="number"
+                      min="0"
+                      value={formData[key]}
+                      onChange={(e) => handleInputChange(key, e.target.value)}
+                      placeholder="0"
+                      aria-invalid={Boolean(errors.salary)}
+                      className={`${inputClass(errors.salary)} pl-14`}
+                    />
+                  </div>
+                </Field>
+              ))}
+            </div>
 
+            {errors.salary && (
+              <div className="-mt-3">
+                <FieldError>{errors.salary}</FieldError>
+              </div>
+            )}
+          </Section>
 
-              {/* Submit Button */}
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting || !isFormValid()}
-                className={`flex w-full items-center justify-center rounded-lg px-6 py-3 font-black text-white transition-all duration-300 ${
-                  hasCompanyDetails()
-                    ? "bg-teal-700 hover:bg-teal-600"
-                    : "bg-gray-400 cursor-not-allowed"
+          {/* Action bar */}
+          <div className="sticky bottom-0 z-10 flex flex-col gap-4 rounded-b-2xl bg-white/95 px-6 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-8">
+            <p className="text-[15px] tabular-nums text-slate-600" aria-live="polite">
+              <span
+                className={`font-bold ${
+                  allFilled ? "text-[#187447]" : "text-[#0a1f6b]"
                 }`}
               >
+                {filledCount} of {REQUIRED_KEYS.length}
+              </span>{" "}
+              required fields complete
+            </p>
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => navigate("/manage-jobs")}
+                className={`inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-[15px] font-semibold text-slate-600 transition-colors hover:text-[#0a1f6b] ${FOCUS}`}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#ffd23f] px-7 text-[15px] font-bold text-[#0a1f6b] transition-colors hover:bg-[#f5c400] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0a1f6b]"
+              >
                 {isSubmitting ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0a1f6b] border-t-transparent" />
                 ) : (
-                  <Send className="h-5 w-5 mr-2" />
+                  <Send className="h-4 w-4" />
                 )}
-                {isSubmitting ? "Publishing Job..." : jobId ? "Update Job" : "Publish Job"}
+                {isSubmitting
+                  ? "Publishing..."
+                  : jobId
+                  ? "Update job"
+                  : "Publish job"}
               </button>
             </div>
-            </section>
-
-            <aside className="employer-card h-fit p-5">
-              <p className="text-sm font-black text-slate-950">Publishing checklist</p>
-              <div className="mt-4 space-y-3">
-                {[
-                  ["Company profile", hasCompanyDetails()],
-                  ["Role basics", Boolean(formData.jobTitle && formData.location)],
-                  ["Description", Boolean(formData.description && formData.requirements)],
-                  ["Preview ready", isFormValid()],
-                ].map(([label, done]) => (
-                  <div key={label} className="flex items-center gap-3 text-sm font-semibold text-slate-600">
-                    <span className={`h-2.5 w-2.5 rounded-full ${done ? "bg-teal-600" : "bg-slate-300"}`} />
-                    {label}
-                  </div>
-                ))}
-              </div>
-            </aside>
-        </div>
-      </div>
+          </div>
+        </form>
       </div>
     </DashboardLayout>
   );

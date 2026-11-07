@@ -1,6 +1,11 @@
 const User = require("../models/User");
 const Application = require("../models/Application");
-const { deleteUploadedFile, getPublicUploadUrl } = require("../utils/uploadPath");
+const {
+  deleteUploadedFile,
+  getPublicUploadUrl,
+  getUploadedFileName,
+  streamUploadedFile,
+} = require("../utils/uploadPath");
 
 const isTemporaryBrowserUrl = (url) =>
   typeof url === "string" && url.startsWith("blob:");
@@ -25,15 +30,15 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
+    // Remember the old avatar BEFORE anything overwrites it
+    const previousAvatar = user.avatar;
+
     // Update basic info
     user.name = name || user.name;
     if (avatar && typeof avatar === "string") user.avatar = avatar;
 
-    // Update avatar if uploaded
+    // Update avatar if uploaded with this request
     if (req.files?.avatar?.length) {
-      if (user.avatar) {
-        await deleteUploadedFile(user.avatar);
-      }
       user.avatar = getPublicUploadUrl(req.files.avatar[0]);
     }
 
@@ -64,6 +69,15 @@ exports.updateProfile = async (req, res) => {
     }
 
     await user.save();
+
+    // Delete the old avatar only after the DB update succeeded
+    if (previousAvatar && previousAvatar !== user.avatar) {
+      try {
+        await deleteUploadedFile(previousAvatar);
+      } catch (cleanupError) {
+        console.error("Old avatar cleanup failed:", cleanupError.message);
+      }
+    }
 
     res.json({
       _id: user._id,
@@ -134,5 +148,34 @@ exports.getPublicProfile = async (req, res) => {
   } catch (err) {
     console.error("getPublicProfile error:", err);
     res.status(500).json({ message: err.message });
+  }
+};
+
+// @desc Download the logged-in user's own profile resume
+exports.downloadMyResume = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user || !user.resume) {
+      return res.status(404).json({ message: "No resume found" });
+    }
+
+    const fileName = getUploadedFileName(user.resume);
+
+    const fileSent = await streamUploadedFile(user.resume, res, {   
+      downloadName: user.resumeName || fileName,
+      isPrivate: true,
+      inline: req.query.inline === "1",
+    });
+
+    if (!fileSent && !res.headersSent) {
+      return res.status(404).json({ message: "Resume file not found" });
+    }
+  } catch (err) {
+    console.error("downloadMyResume error:", err.message);
+
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Could not load resume" });
+    }
   }
 };

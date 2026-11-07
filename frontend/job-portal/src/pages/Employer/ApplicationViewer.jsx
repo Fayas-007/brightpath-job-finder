@@ -37,28 +37,80 @@ const ApplicationViewer = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  const fetchApplications = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await axiosInstance.get(
-        API_PATHS.APPLICATIONS.GET_ALL_APPLICATIONS(jobId)
-      );
-      setApplications(Array.isArray(response.data) ? response.data : []);
-    } catch (err) {
-      console.error("Failed to fetch applications:", err);
-      toast.error("Failed to fetch applications");
-    } finally {
-      setLoading(false);
-    }
-  }, [jobId]);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    limit: 10,
+    totalApplications: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
+
+  const fetchApplications = useCallback(
+    async (page = currentPage) => {
+      if (!jobId) return;
+
+      try {
+        setLoading(true);
+
+        const response = await axiosInstance.get(
+          API_PATHS.APPLICATIONS.GET_ALL_APPLICATIONS(jobId),
+          {
+            params: {
+              page,
+              limit: 10,
+            },
+          }
+        );
+
+        const data = response.data;
+
+        // Supports both paginated and legacy array responses.
+        setApplications(
+          Array.isArray(data.applications)
+            ? data.applications
+            : Array.isArray(data)
+              ? data
+              : []
+        );
+
+        if (data.pagination) {
+          setPagination(data.pagination);
+        } else {
+          setPagination({
+            currentPage: 1,
+            limit: 10,
+            totalApplications: Array.isArray(data) ? data.length : 0,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch applications:", err);
+        toast.error("Failed to fetch applications");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [jobId, currentPage]
+  );
 
   useEffect(() => {
-    if (jobId) fetchApplications();
-    else navigate("/manage-jobs");
-  }, [fetchApplications, jobId, navigate]);
+    if (jobId) {
+      fetchApplications(currentPage);
+    } else {
+      navigate("/manage-jobs");
+    }
+  }, [fetchApplications, jobId, navigate, currentPage]);
 
   const validApplications = useMemo(
-    () => applications.filter((app) => app.job?._id && app.applicant?._id),
+    () =>
+      applications.filter(
+        (app) => app.job?._id && app.applicant?._id
+      ),
     [applications]
   );
 
@@ -74,7 +126,9 @@ const ApplicationViewer = () => {
     };
 
     validApplications.forEach((application) => {
-      if (summary[application.status] !== undefined) summary[application.status] += 1;
+      if (summary[application.status] !== undefined) {
+        summary[application.status] += 1;
+      }
     });
 
     return summary;
@@ -84,11 +138,19 @@ const ApplicationViewer = () => {
     const query = searchTerm.trim().toLowerCase();
 
     return validApplications.filter((application) => {
-      const applicantName = application.applicant?.name?.toLowerCase() || "";
-      const applicantEmail = application.applicant?.email?.toLowerCase() || "";
+      const applicantName =
+        application.applicant?.name?.toLowerCase() || "";
+      const applicantEmail =
+        application.applicant?.email?.toLowerCase() || "";
+
       const matchesSearch =
-        !query || applicantName.includes(query) || applicantEmail.includes(query);
-      const matchesStatus = statusFilter === "All" || application.status === statusFilter;
+        !query ||
+        applicantName.includes(query) ||
+        applicantEmail.includes(query);
+
+      const matchesStatus =
+        statusFilter === "All" ||
+        application.status === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -98,7 +160,14 @@ const ApplicationViewer = () => {
     if (application.resumeName) return application.resumeName;
     if (!application.resume) return "resume";
 
-    const fileName = decodeURIComponent(application.resume.split("/").pop() || application.resume);
+    let fileName = application.resume.split("/").pop() || application.resume;
+
+    try {
+      fileName = decodeURIComponent(fileName);
+    } catch {
+      // Keep the original filename if URL decoding fails.
+    }
+
     return fileName.replace(/-\d{13}-\d+(\.[^.]+)$/i, "$1");
   };
 
@@ -113,14 +182,21 @@ const ApplicationViewer = () => {
         API_PATHS.APPLICATIONS.DOWNLOAD_RESUME(application._id),
         { responseType: "blob" }
       );
+
       const resumeBlobUrl = window.URL.createObjectURL(response.data);
       const link = document.createElement("a");
+
       link.href = resumeBlobUrl;
       link.download = getDisplayResumeName(application);
+
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.setTimeout(() => window.URL.revokeObjectURL(resumeBlobUrl), 1000);
+
+      window.setTimeout(
+        () => window.URL.revokeObjectURL(resumeBlobUrl),
+        1000
+      );
     } catch (err) {
       console.error("Failed to download submitted resume:", err);
       toast.error("The submitted resume file is no longer available.");
@@ -158,6 +234,7 @@ const ApplicationViewer = () => {
               </button>
 
               <p className="employer-kicker">Candidate review</p>
+
               <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
                 {job?.title || "Applications"}
               </h1>
@@ -169,12 +246,14 @@ const ApplicationViewer = () => {
                     {job.location}
                   </span>
                 )}
+
                 {job?.type && (
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-white bg-white/80 px-3 py-2 shadow-sm">
                     <Briefcase className="h-4 w-4 text-teal-700" />
                     {job.type}
                   </span>
                 )}
+
                 {job?.category && (
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-white bg-white/80 px-3 py-2 shadow-sm">
                     <FileText className="h-4 w-4 text-teal-700" />
@@ -186,23 +265,36 @@ const ApplicationViewer = () => {
 
             <div className="grid min-w-64 grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
               <div className="rounded-lg border border-white bg-white/85 p-4 shadow-sm">
-                <p className="text-xs font-black uppercase text-slate-400">Total</p>
-                <p className="mt-1 text-3xl font-black text-slate-950">{counts.total}</p>
+                <p className="text-xs font-black uppercase text-slate-400">
+                  Total
+                </p>
+                <p className="mt-1 text-3xl font-black text-slate-950">
+                  {counts.total}
+                </p>
               </div>
+
               <div className="rounded-lg border border-white bg-white/85 p-4 shadow-sm">
-                <p className="text-xs font-black uppercase text-slate-400">In review</p>
+                <p className="text-xs font-black uppercase text-slate-400">
+                  In review
+                </p>
                 <p className="mt-1 text-3xl font-black text-teal-700">
                   {counts["In Review"]}
                 </p>
               </div>
+
               <div className="rounded-lg border border-white bg-white/85 p-4 shadow-sm">
-                <p className="text-xs font-black uppercase text-slate-400">Accepted</p>
+                <p className="text-xs font-black uppercase text-slate-400">
+                  Accepted
+                </p>
                 <p className="mt-1 text-3xl font-black text-emerald-700">
                   {counts.Accepted}
                 </p>
               </div>
+
               <div className="rounded-lg border border-white bg-white/85 p-4 shadow-sm">
-                <p className="text-xs font-black uppercase text-slate-400">Rejected</p>
+                <p className="text-xs font-black uppercase text-slate-400">
+                  Rejected
+                </p>
                 <p className="mt-1 text-3xl font-black text-rose-600">
                   {counts.Rejected}
                 </p>
@@ -213,16 +305,24 @@ const ApplicationViewer = () => {
           <div className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_13rem] sm:p-5">
             <label className="relative block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
               <input
                 value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  setCurrentPage(1);
+                }}
                 placeholder="Search candidate name or email"
                 className="field-control pl-10"
               />
             </label>
+
             <select
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+                setCurrentPage(1);
+              }}
               className="field-control"
             >
               {statusOptions.map((status) => (
@@ -239,9 +339,11 @@ const ApplicationViewer = () => {
             <div className="rounded-lg bg-teal-50 p-4 text-teal-700">
               <Users className="h-8 w-8" />
             </div>
+
             <h3 className="mt-4 text-lg font-black text-slate-950">
               No applications yet
             </h3>
+
             <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
               Candidate submissions for this role will appear here.
             </p>
@@ -251,9 +353,11 @@ const ApplicationViewer = () => {
             <div className="rounded-lg bg-slate-50 p-4 text-slate-500">
               <Search className="h-8 w-8" />
             </div>
+
             <h3 className="mt-4 text-lg font-black text-slate-950">
               No matching candidates
             </h3>
+
             <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
               Try a different search or status filter.
             </p>
@@ -262,7 +366,9 @@ const ApplicationViewer = () => {
           <section className="employer-panel overflow-hidden">
             <div className="border-b border-slate-100 px-5 py-4">
               <p className="text-sm font-black text-slate-950">
-                Showing {filteredApplications.length} of {validApplications.length} candidates
+                Showing {filteredApplications.length} candidates on this page
+                {" · "}
+                {pagination.totalApplications} total applicants
               </p>
             </div>
 
@@ -300,18 +406,24 @@ const ApplicationViewer = () => {
                           <h2 className="break-words text-lg font-black text-slate-950">
                             {applicant.name || "Applicant"}
                           </h2>
+
                           <StatusBadge status={application.status} />
                         </div>
+
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-slate-500">
                           <span className="inline-flex min-w-0 items-center gap-1.5">
                             <Mail className="h-4 w-4 flex-shrink-0" />
-                            <span className="break-all">{applicant.email || "No email"}</span>
+                            <span className="break-all">
+                              {applicant.email || "No email"}
+                            </span>
                           </span>
+
                           <span className="inline-flex items-center gap-1.5">
                             <Calendar className="h-4 w-4" />
                             Applied {formatDate(application.createdAt)}
                           </span>
                         </div>
+
                         <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
                           {hasResume ? (
                             <>
@@ -340,6 +452,7 @@ const ApplicationViewer = () => {
                         <Download className="h-4 w-4" />
                         Resume
                       </button>
+
                       <button
                         type="button"
                         onClick={() => setSelectedApplicant(application)}
@@ -353,6 +466,38 @@ const ApplicationViewer = () => {
                 );
               })}
             </div>
+
+            {pagination.totalPages > 1 && (
+              <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-100 px-5 py-4 sm:flex-row">
+                <p className="text-sm font-medium text-slate-600">
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                  {" · "}
+                  {pagination.totalApplications} applicants
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((page) => Math.max(1, page - 1))
+                    }
+                    disabled={!pagination.hasPreviousPage || loading}
+                    className="employer-secondary-action px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((page) => page + 1)}
+                    disabled={!pagination.hasNextPage || loading}
+                    className="employer-action px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         )}
 
