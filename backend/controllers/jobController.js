@@ -109,12 +109,16 @@ exports.getJobs = async (req, res) => {
     };
 
     if (keyword?.trim()) {
-      query.title = {
-        $regex: keyword.trim(),
-        $options: "i",
-      };
-    }
+  const escaped = keyword.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = { $regex: escaped, $options: "i" };
 
+  query.$or = [
+    { title: regex },
+    { description: regex },
+    { requirements: regex },
+    { category: regex },
+  ];
+}
     if (location?.trim()) {
       query.location = {
         $regex: location.trim(),

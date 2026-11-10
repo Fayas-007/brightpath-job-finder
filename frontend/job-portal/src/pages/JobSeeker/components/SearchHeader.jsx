@@ -14,10 +14,7 @@ const quickTags = ["Remote", "Full Time", "Design", "Engineering"];
 const SearchHeader = ({ filters, handleFilterChange, onClear, total = 0 }) => {
   const handleQuickTag = (tag) => {
     if (tag === "Remote") {
-      handleFilterChange(
-        "location",
-        filters.location === "Remote" ? "" : "Remote"
-      );
+      handleFilterChange("type", filters.type === "Remote" ? "" : "Remote");
     } else if (tag === "Full Time") {
       handleFilterChange(
         "type",
@@ -31,7 +28,7 @@ const SearchHeader = ({ filters, handleFilterChange, onClear, total = 0 }) => {
   const hasFilters = Object.values(filters).some(Boolean);
 
   const isActive = (tag) => {
-    if (tag === "Remote") return filters.location === "Remote";
+    if (tag === "Remote") return filters.type === "Remote";
     if (tag === "Full Time") return filters.type === "Full-Time";
     return filters.keyword === tag;
   };
@@ -89,8 +86,7 @@ const SearchHeader = ({ filters, handleFilterChange, onClear, total = 0 }) => {
         </h1>
 
         <p className="mt-3 max-w-xl text-sm font-medium text-white/85 sm:text-base">
-          Search by title, skill or company, then narrow it down by pay and job
-          type.
+          Search by title or skill, then narrow it down by pay and job type.
         </p>
 
         {/* Search bar */}
@@ -103,14 +99,14 @@ const SearchHeader = ({ filters, handleFilterChange, onClear, total = 0 }) => {
             <Search className="h-5 w-5 shrink-0 text-[#1646e0]" />
             <span className="min-w-0 flex-1">
               <span className="block text-xs font-semibold text-[#1646e0]">
-                Job, skill or company
+                Job title or skill
               </span>
               <input
                 type="search"
                 value={filters.keyword}
                 onChange={(e) => handleFilterChange("keyword", e.target.value)}
                 placeholder="e.g. React developer"
-                aria-label="Search jobs by title, skill or company"
+                aria-label="Search jobs by title or skill"
                 className={input}
               />
             </span>

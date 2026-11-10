@@ -107,6 +107,14 @@ const Spinner = () => (
   <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0a1f6b] border-t-transparent" />
 );
 
+const formatMemberSince = (value) =>
+  value
+    ? new Date(value).toLocaleDateString("en-GB", {
+        month: "long",
+        year: "numeric",
+      })
+    : "";
+
 /* ---------------------------------------------
    Employer profile page
 --------------------------------------------- */
@@ -121,6 +129,7 @@ const EmployerProfilePage = () => {
     avatar: user?.avatar || "",
     companyName: user?.companyName || "",
     companyDescription: user?.companyDescription || "",
+    createdAt: user?.createdAt || "",
   });
 
   const [editMode, setEditMode] = useState(false);
@@ -222,6 +231,7 @@ const EmployerProfilePage = () => {
           avatar: res.data.avatar || "",
           companyName: res.data.companyName || "",
           companyDescription: res.data.companyDescription || "",
+          createdAt: res.data.createdAt || "",
         };
         setProfileData(nextProfile);
         setFormData(nextProfile);
@@ -499,7 +509,6 @@ const EmployerProfilePage = () => {
                 >
                   {profileData.companyName || "Company profile"}
                 </h2>
-                <p className="mt-1 text-sm text-slate-500">Employer account</p>
 
                 <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#187447]">
                   <span className="relative flex h-2.5 w-2.5 items-center justify-center rounded-full bg-[#22965b]">
@@ -535,11 +544,14 @@ const EmployerProfilePage = () => {
                     label="Contact name"
                     value={profileData.name || "Not provided"}
                   />
-                  <DetailRow
-                    label="Company name"
-                    value={profileData.companyName || "Not provided"}
-                  />
                   <DetailRow label="Email address" value={profileData.email} />
+                  <DetailRow label="Account type" value="Employer" />
+                  {profileData.createdAt && (
+                    <DetailRow
+                      label="Member since"
+                      value={formatMemberSince(profileData.createdAt)}
+                    />
+                  )}
                 </dl>
               </div>
             </div>
